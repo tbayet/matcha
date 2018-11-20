@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+
+var mysql = require('mysql')
+var fakedata = require('./data.json')
+
+console.log("DATA", fakedata)
+var connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'admin',
+  password: 'password',
+  database: 'matcha_db'
+})
+
+connection.connect(function(err) {
+  if (err) throw err
+  var sql = "DROP TABLE  IF EXISTS users";
+  connection.query(sql, function (err, result) {
+    if (err) throw err;
+    console.log("Table deleted...");
+
+    sql = "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, nickname VARCHAR(255) NOT NULL UNIQUE, email VARCHAR(255) UNIQUE, firstname VARCHAR(255), lastname VARCHAR(255), password VARCHAR(255), age VARCHAR(255), popularity INT DEFAULT 0, gender INT, orientation INT)"
+    connection.query(sql, function(err, result) {
+      if (err) throw err
+      console.log('Table created...')
+      connection.query('INSERT INTO users (nickname, email, firstname, lastname, password, age, gender, orientation) VALUES ?', [fakedata], function(err, result) {
+        if (err) throw err
+        console.log('Fake data added to table')
+        connection.query('SELECT * FROM users', function(err, results) {
+          if (err) throw err
+          console.log(results[0].id)
+          console.log(results[0].nickname)
+          console.log(results[0].email)
+          console.log(results[0].firstname)
+          console.log(results[0].lastname)
+          console.log(results[0].password)
+          console.log(results[0].popularity)
+          console.log(results[0].age)
+          console.log(results[0].gender)
+          console.log(results[0].orientation)
+
+          connection.query('DROP TABLE IF EXISTS taglink', function(err, results) {
+            connection.query('DROP TABLE IF EXISTS tags', function(err, results) {
+              connection.query('DROP TABLE IF EXISTS bio', function(err, results) {
+                connection.query('DROP TABLE IF EXISTS pictures', function(err, results) {
+                  connection.query('CREATE TABLE taglink (idUser INT, idTag INT)', function(err, results) {
+                    connection.query('CREATE TABLE tags (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE)', function(err, results) {
+                      connection.query('CREATE TABLE bio (idUser INT PRIMARY KEY, content LONGTEXT)', function(err, results) {
+                        connection.query('CREATE TABLE pictures (id INT AUTO_INCREMENT PRIMARY KEY, idUser INT, picture VARCHAR(255), date TIMESTAMP)', function(err, results) {
+                          if (err) throw err
+                          connection.end()
+                        })
+                      })
+                    })
+                  })
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  });
+
+
+
+})
