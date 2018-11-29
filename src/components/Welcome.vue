@@ -47,6 +47,7 @@
   import Connect from './Connect'
   import Register from './Register'
 
+  import axios from "axios"
   export default {
     components: {
       Connect,

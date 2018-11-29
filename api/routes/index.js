@@ -1,10 +1,10 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', { title: 'Express' });
-});
+})
 
 router.get('/tags', function(req, res, next) {
   if (req.query.input && req.query.input.trim().length) {
@@ -15,7 +15,7 @@ router.get('/tags', function(req, res, next) {
   else {
     res.send(false);
   }
-});
+})
 
 router.get('/id', function(req, res, next) {
   if (req.query.nickname) {
@@ -28,6 +28,6 @@ router.get('/id', function(req, res, next) {
   }
   else
     res.send(false)
-});
+})
 
 module.exports = router;

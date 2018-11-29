@@ -7,6 +7,7 @@ import axios from 'axios'
 import Welcome from './components/Welcome'
 import Profil from './components/Profil'
 import ResetPassword from './components/ResetPassword'
+import Browse from './components/Browse'
 
 let globalData = new Vue({
   data: {
@@ -21,7 +22,8 @@ Vue.mixin({
     $user: {
       get: function () { return globalData.$data.$user },
       set: function (newUser) { globalData.$data.$user = newUser; }
-    }
+    },
+    $APIKEY: () => ("matcha42")
   }
 })
 
@@ -89,6 +91,7 @@ const router = new VueRouter({
     { path: '/profil', component: Profil, props: true, beforeEnter: logged_page},
     { path: '/profil/:nickname', component: Profil, props: true, beforeEnter: logged_page},
     { path: '/resetpassword', component: ResetPassword, beforeEnter: resetPassword},
+    { path: '/browse', component: Browse, beforeEnter: logged_page},
     { path: '*', redirect: '/' }
   ]
 })

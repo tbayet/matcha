@@ -7,6 +7,11 @@
       </v-toolbar-title>
       <v-spacer></v-spacer>
       <v-btn
+        title="Browse"
+        flat
+        to="/browse"
+      >Browse</v-btn>
+      <v-btn
         title="Matches"
         flat
         href="https://github.com/vuetifyjs/vuetify/releases/latest"

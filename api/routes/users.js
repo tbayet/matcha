@@ -78,21 +78,28 @@ router.get('/', function(req, res, next) {
   res.send('respond with a resource');
 });
 
-const validName = (v) => {
+const validName = v => {
   if (!v || v.length < 2 || v.length > 16)
     return false
   return true
 }
-const validEmail = (v) => {
+const validEmail = v => {
   if (!v || !/.+@.+/.test(v) || v.length > 32)
     return false
   return true
 }
-const validPassword = (v) => {
+const validPassword = v => {
   if (!v || v.length < 8 || v.length > 26 || !/[0-9]/.test(v) || !/[A-Z]/.test(v) || !/[a-z]/.test(v))
     return false
   return true
 }
+const validPosition = v => {
+  if (!v || !/-?\d+\.\d+,-?\d+\.\d+,\d{4,5}/.test(v))
+    return false
+  return true
+}
+const validGender = v => (v >= 1 && v <=2)
+const validOrientation = v => (v >= 1 && v <=3)
 
 /* Valid user connection */
 //  PENSER AU LOWERCASE
@@ -172,8 +179,13 @@ router.get('/resetpassword', function(req, res, next) {
 router.post('/edit', function(req, res, next) {
   if (check_key(req.body.id, req.body.token)) {
     let props = req.body.props
+    console.log(props)
     //CHECK if NICKNAME or EMAIL (unwanted updates) and cancel
-    if (!props.email || !validPassword(props.email))
+    if (props.nickname)
+      delete props.nickname
+    if (props.id)
+      delete props.id
+    if (!props.email || !validEmail(props.email))
       delete props.email
     if (!props.password || !validPassword(props.password))
       delete props.password
@@ -183,10 +195,12 @@ router.post('/edit', function(req, res, next) {
       delete props.lastname
     if (!props.age || !validName(props.age))
       delete props.age
-    if (!props.gender || !validName(props.gender))
+    if (!props.gender || !validGender(props.gender))
       delete props.gender
-    if (!props.orientation || !validName(props.orientation))
+    if (!props.orientation || !validOrientation(props.orientation))
       delete props.orientation
+    if (!props.position || !validPosition(props.position))
+      delete props.position
     const columns = Object.keys(props)
     if (columns.length) {
       let data = ""
@@ -221,9 +235,95 @@ router.post('/check', function(req, res, next) {
     res.send(check_key(req.body.id, req.body.token))
 });
 
+
+/*
+  age [min, max]
+  popularity [min, max]
+  distance km
+  tags [list]
+*/
+router.post('/profiles', function(req, res, next) {
+  const lookingfor = (gender, orientation) => {
+    if (gender == 1) {
+      if (orientation == 1) return [[2, 2], [1, 3]]
+      else if (orientation == 2) return [[1, 1], [2, 3]]
+      else return [[2, 2, 1, 1], [1, 3, 2, 3]]
+    } else {
+      if (orientation == 1) return [[1, 1], [1, 3]]
+      else if (orientation == 2) return [[2, 2], [2, 3]]
+      else return [[1, 1, 2, 2] [1, 3, 2, 3]]
+    }
+  }
+  const profiles_sort = (profiles, age, position, popularity, tags) => {
+    let birth = new Date(age)
+    let pos = position.split(",")
+    let lat = parseFloat(pos[0])
+    let lng = parseFloat(pos[1])
+    // if tags && tags.length
+    profiles.sort((a, b) => {
+      let scoreA = 0
+      let scoreB = 0
+      let birthA = new Date(a.age)
+      let birthB = new Date(b.age)
+
+      scoreA += (new Date(Math.abs(birth - birthA)).getFullYear() - 1970) * 5
+      scoreB += (new Date(Math.abs(birth - birthB)).getFullYear() - 1970) * 5
+
+      scoreA += parseInt(Math.sqrt(Math.abs(popularity - a.popularity))) * 4
+      scoreB += parseInt(Math.sqrt(Math.abs(popularity - b.popularity))) * 4
+
+      scoreA += parseInt(Math.sqrt(Math.abs(lat - a.position.split(",")[0]) + (Math.abs(lng - a.position.split(",")[1]) % 180 ? 180 - (Math.abs(lng - a.position.split(",")[1]) % 180) : Math.abs(lng - a.position.split(",")[1])))) * 20
+      scoreA += parseInt(Math.sqrt(Math.abs(lat - b.position.split(",")[0]) + (Math.abs(lng - b.position.split(",")[1]) % 180 ? 180 - (Math.abs(lng - b.position.split(",")[1]) % 180) : Math.abs(lng - b.position.split(",")[1])))) * 20
+
+      scoreA += a.tags.split(",").filter((curr) => (tags.indexOf(parseInt(curr)) != -1)).length * 10
+      scoreB += b.tags.split(",").filter((curr) => (tags.indexOf(parseInt(curr)) != -1)).length * 10
+
+      return (scoreA - scoreB)
+    })
+    return profiles
+  }
+
+  const q = req.body
+  if (check_key(q.id, q.token)) {
+    res.locals.connection.query("SELECT popularity, age, gender, orientation, position FROM users WHERE id=?", [q.id], function(err, result) {
+      //check si le profil est completement rempli
+      res.locals.connection.query("SELECT id FROM tags WHERE id IN (SELECT idTag FROM taglink WHERE idUser=?)", [q.id], function(err, result2) {
+        if (err) throw err
+        const gender_orientation = lookingfor(result[0].gender, result[0].orientation)
+        const age = ((q.age && q.age.length == 2) ? q.age: [8,100]).map(years => {
+          let birthdate = new Date()
+          birthdate.setFullYear(birthdate.getFullYear() - years)
+          birthdate = birthdate.toISOString()
+          return (birthdate.substring(0, birthdate.indexOf("T")))
+        })
+        const popularity = (q.popularity && q.popularity.length == 2) ? q.popularity: [result[0].popularity / 2, result[0].popularity * 2]
+        const distance = q.distance ? q.distance : 25
+
+        let sql = "SELECT users.id, users.nickname, users.popularity, users.age, users.gender, users.position, GROUP_CONCAT(taglink.idTag) AS tags FROM users LEFT OUTER JOIN taglink ON users.id=taglink.idUser " +
+        "WHERE users.id<>? AND users.gender IN (?) AND users.orientation IN (?) AND (users.age BETWEEN ? AND ?) AND (users.popularity BETWEEN ? AND ?)"
+        if (q.tags && q.tags.length) {
+          sql += " AND users.id IN (SELECT idUser FROM taglink WHERE idTag IN (?))"
+        }
+        sql += " GROUP BY users.id"
+        res.locals.connection.query(sql, [q.id, gender_orientation[0], gender_orientation[1], age[1], age[0], popularity[0], popularity[1], q.tags], function(err, result3) {
+          if (err) throw err
+          console.log(result3)
+          if (result3 && result3.length) {
+            let sorted = profiles_sort(result3, result[0].age, result[0].position, result[0].popularity, result2)
+            res.send(sorted)
+          } else {
+            res.send(true)
+          }
+        })
+      })
+    })
+  } else
+    res.send(false)
+});
+
 router.get('/profile/:id', function(req, res, next) {
   if (check_key(req.query.id, req.query.token)) {
-    let sql = "SELECT nickname, email, popularity, firstname, lastname, age, gender, orientation FROM users WHERE id=?"
+    let sql = "SELECT nickname, email, popularity, firstname, lastname, age, gender, orientation, position FROM users WHERE id=?"
     res.locals.connection.query(sql, [req.params.id], function(err, result) {
       if (err) throw err
       if (req.params.id != req.query.id)

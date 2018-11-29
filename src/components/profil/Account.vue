@@ -61,6 +61,20 @@
             label="Birthdate"
             :rules="rules.birth"
           ></v-text-field>
+
+          <v-text-field
+            :loading="loadingzip"
+            :readonly="loadingzip"
+            ref="zip"
+            mask="#####"
+            append-icon="gps_fixed"
+            @click:append="geolocate()"
+            v-model="newProfile.position.zip"
+            :rules="[].concat(rules.zip, ruleConcat)"
+            label="ZIP code"
+            placeholder="ex: 92001"
+            @input="positionChange"
+          ></v-text-field>
         </v-form>
       </v-card>
     </v-dialog>
@@ -75,11 +89,14 @@
     props: ['owner', 'id'],
 
     data: () => ({
+      loadingzip: false,
+      switchZip: false,
+      errorsZip: [],
       alert: {},
       dialog: false,
       valid: true,
       profile : {},
-      newProfile : {},
+      newProfile : { position: {}},
       rules: {
         birth: [
           v => (!v || (v && new Date(new Date().getTime() - new Date(v).getTime()).getFullYear() - 1970 > 18 )) || 'You must have 18 years old or more',
@@ -97,6 +114,9 @@
         password: [
           v => (!v || (v && v.length <= 26 && v.length >= 8)) || 'Password must be between 8 and 26 characters',
           v => (!v || (/[0-9]/.test(v) && /[A-Z]/.test(v) && /[a-z]/.test(v))) || 'Password must contain up and low letters and numbers'
+        ],
+        zip: [
+          v => (!v || (v && v.length <= 5 && v.length >= 4)) || 'ZIP code must be between 4 and 5 numbers',
         ]
       }
     }),
@@ -104,6 +124,134 @@
       this.init_profile()
     },
     methods: {
+      ruleConcat(v) {
+        return (this.errorsZip.length == 0 || this.errorsZip[0])
+      },
+      positionChange(zip) {
+        this.loadingzip = true
+        if (this.switchZip)
+          this.switchZip = false
+        else {
+          this.newProfile.position.lat = null
+          this.newProfile.position.lng = null
+        }
+        this.ruleZip(zip)
+      },
+      async ruleZip(v) {
+        let err = false
+        if (v && v.length <= 5 && v.length >= 4) {
+          await axios.get('http://api.geonames.org/postalCodeLookupJSON', {
+            params: {
+              postalcode: v,
+              username: this.$APIKEY
+            }
+          }).then(response => {
+            if (response.data && response.data.postalcodes && response.data.postalcodes.length) {
+              if (!this.newProfile.position.lat || !this.newProfile.position.lng) {
+                response.data.postalcodes.sort((a, b) => {
+                  if (a.countryCode == "FR") return -1
+                  if (b.countryCode == "FR") return 1
+                  if (a.countryCode == "US") return -1
+                  if (b.countryCode == "US") return 1
+                  if (a.countryCode == "GB") return -1
+                  if (b.countryCode == "GB") return 1
+                  if (a.countryCode == "BEL") return -1
+                  if (b.countryCode == "BEL") return 1
+                  return -1
+                })
+                console.log("sorted", response.data.postalcodes)
+                this.newProfile.position.lat = response.data.postalcodes[0].lat
+                this.newProfile.position.lng = response.data.postalcodes[0].lng
+              }
+            } else {
+              err = true
+            }
+          })
+        }
+        this.errorsZip = err ? ["This ZIP code doesn't exists"] : []
+        this.$refs.zip.validate()
+        this.loadingzip = false
+      },
+      requestZipCode(lat, lng) {
+        axios.get('http://api.geonames.org/findNearbyPostalCodesJSON', {
+          params: {
+            lat: lat,
+            lng: lng,
+            username: this.$APIKEY
+          }
+        }).then(response => {
+          console.log("RESPONSE", response.data)
+          if (response.data && response.data.postalCodes && response.data.postalCodes.length) {
+            console.log("length yeh")
+            this.switchZip = true
+            this.newProfile.position.zip = response.data.postalCodes[0].postalCode
+          } else {
+            this.newProfile.position.zip = ''
+          }
+        })
+      },
+      requestLatLng(zip) {
+        axios.get('http://api.geonames.org/postalCodeLookupJSON', {
+          params: {
+            postalcode: v,
+            username: this.$APIKEY
+          }
+        }).then(response => {
+          if (response.data && response.data.postalcodes && response.data.postalcodes.length) {
+            if (!this.newProfile.position.lat || !this.newProfile.position.lng) {
+              response.data.postalcodes.sort((a, b) => {
+                if (a.countryCode == "FR") return -1
+                if (b.countryCode == "FR") return 1
+                if (a.countryCode == "US") return -1
+                if (b.countryCode == "US") return 1
+                if (a.countryCode == "UK") return -1
+                if (b.countryCode == "UK") return 1
+                if (a.countryCode == "BEL") return -1
+                if (b.countryCode == "BEL") return 1
+                return -1
+              })
+              this.newProfile.position.lat = response.data.postalcodes[0].lat
+              this.newProfile.position.lng = response.data.postalcodes[0].lng
+            }
+          }
+        })
+      },
+      getCurrentPositionByIP() {
+        axios.get('https://api.ipify.org/?format=json').then(response => {
+          if (response.data) {
+            console.log(response.data.ip)
+            axios.get('http://ip-api.com/json', {
+              params: {
+                ip: response.data.ip
+              }
+            }).then(res => {
+              if (res.data) {
+                this.switchZip = true
+                this.newProfile.position.lat = res.data.lat
+                this.newProfile.position.lng = res.data.lon,
+                this.newProfile.position.zip = res.data.zip
+              }
+            })
+          }
+        })
+      },
+      geolocate () {
+        const latlong = position => {
+          if (position && position.coords) {
+            this.newProfile.position.lat = position.coords.latitude
+            this.newProfile.position.lng = position.coords.longitude,
+            this.requestZipCode(position.coords.latitude, position.coords.longitude)
+          }
+        }
+        const failed = error => {
+          if (error.code == error.PERMISSION_DENIED)
+            this.getCurrentPositionByIP()
+          else
+            this.newProfile.position = {long: null, lat: null, zip: null}
+        }
+        if (navigator.geolocation)
+          navigator.geolocation.getCurrentPosition(latlong, failed);
+      },
       gender: v => (v == "1" ? "Male" : (v == "2") ? "Female" : ""),
       orientation: v => (v == "1" ? "Heterosexual" : (v == "2") ? "Homosexual" : "Bisexual"),
       init_profile () {
@@ -115,11 +263,28 @@
             this.profile.password = ''
             this.profile.gender = this.profile.gender ? this.profile.gender.toString() : ''
             this.profile.orientation = this.profile.orientation ? this.profile.orientation.toString() : ''
+            this.profile.position = this.parsePosition(this.profile.position)
             this.newProfile = JSON.parse(JSON.stringify(this.profile))
+            this.requestZipCode(this.profile.position.lat, this.profile.position.lng)
+            console.log(this.newProfile)
           }
         })
       },
       calcAge: d => (new Date(new Date().getTime() - new Date(d).getTime()).getFullYear() - 1970),
+      comparePosition: (pos1, pos2) => (pos1.zip == pos2.zip && pos1.lat == pos2.lat && pos1.lng == pos2.lng),
+      parsePosition (str) {
+        if (str) {
+          const exploded = str.split(",")
+          return {
+            lat: exploded[0],
+            lng: exploded[1],
+            zip: exploded[2]
+          }
+        } else
+          return {lat: null, lng: null, zip: ''}
+      },
+      unparsePosition: pos => (pos.lat + "," + pos.lng + "," + pos.zip),
+
       submit () {
         const update = {
           password: this.newProfile.password ? this.newProfile.password : false,
@@ -128,8 +293,10 @@
           lastname: this.newProfile.lastname ? (this.newProfile.lastname == this.profile.lastname ? false : this.newProfile.lastname) : false,
           age: this.newProfile.age ? (this.newProfile.age == this.profile.age ? false : this.newProfile.age) : false,
           gender: this.newProfile.gender && this.newProfile.gender != "0" ? (this.newProfile.gender == this.profile.gender ? false : parseInt(this.newProfile.gender)) : false,
-          orientation: this.newProfile.orientation ? (this.newProfile.orientation == this.profile.orientation ? false : parseInt(this.newProfile.orientation)) : false
+          orientation: this.newProfile.orientation ? (this.newProfile.orientation == this.profile.orientation ? false : parseInt(this.newProfile.orientation)) : false,
+          position: this.newProfile.position.zip ? (this.comparePosition(this.newProfile.position, this.profile.position) ? false : this.newProfile.position) : false
         }
+        console.log(update)
         const keys = Object.keys(update)
         let hasChanged = false
         keys.map(key => {
@@ -138,6 +305,7 @@
         })
         if (hasChanged) {
           if (this.$refs.form.validate()) {
+            update.position = this.unparsePosition(update.position)
             axios.post('/api/users/edit', {
               props: update,
               id: this.$user.id,

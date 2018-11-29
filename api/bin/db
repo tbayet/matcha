@@ -1,15 +1,53 @@
 #!/usr/bin/env node
 
-var mysql = require('mysql')
-var fakedata = require('./data.json')
+const mysql = require('mysql')
+const faker = require('faker/locale/fr')
+const FAKENUMBER = 200
 
-console.log("DATA", fakedata)
-var connection = mysql.createConnection({
+const connection = mysql.createConnection({
   host: 'localhost',
   user: 'admin',
   password: 'password',
   database: 'matcha_db'
 })
+
+const fakeProfiles = () => { // Add popularity ?
+  let res = []
+  for (i = 0; i < FAKENUMBER; i++) {
+    res.push([
+      faker.internet.userName(),
+      faker.internet.email(),
+      faker.name.firstName(),
+      faker.name.lastName(),
+      "Merde21000",
+      "19" + (Math.floor(Math.random() * 6) + 3) +""+ Math.floor(Math.random() * 10) + "-0" + Math.floor(Math.random() * 10) + "-" + Math.floor(Math.random() * 3) + "" + Math.floor(Math.random() * 9 + 1),
+      Math.floor(Math.random() * 2) + 1, // gender
+      Math.floor(Math.random() * 3) + 1, // orientation
+      faker.address.latitude() + "," + faker.address.longitude()
+    ])
+  }
+  return res
+}
+const fakeTags = () => {
+  let res = {tags : [], taglink: []}
+  let tmp = []
+  for (let i = 0; i < 50; i++) {
+    tmp.push(faker.commerce.color())
+  }
+  let i = 0
+  res.tags = tmp.filter((curr, index) => (tmp.indexOf(curr) == index)).map((elem) => ([i++, elem]))
+
+  for (let j = 0; j < FAKENUMBER; j++) {
+    const max = Math.floor(Math.random() * 8) + 1
+    for (let i = 0; i < max; i++) {
+      res.taglink.push([j + 1, Math.floor(Math.random() * res.tags.length + 1)])
+    }
+  }
+  res.taglink = res.taglink.filter((curr, index) => (res.taglink.findIndex(elem => (elem[0] == curr[0] && elem[1] == curr[1])) == index))
+  return res
+}
+
+console.log(fakeProfiles(), fakeTags())
 
 connection.connect(function(err) {
   if (err) throw err
@@ -18,36 +56,32 @@ connection.connect(function(err) {
     if (err) throw err;
     console.log("Table deleted...");
 
-    sql = "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, nickname VARCHAR(255) NOT NULL UNIQUE, email VARCHAR(255) UNIQUE, firstname VARCHAR(255), lastname VARCHAR(255), password VARCHAR(255), age VARCHAR(255), popularity INT DEFAULT 0, gender INT, orientation INT)"
+    sql = "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, nickname VARCHAR(255) NOT NULL UNIQUE, email VARCHAR(255) UNIQUE, firstname VARCHAR(255), lastname VARCHAR(255), password VARCHAR(255), age VARCHAR(255), popularity INT DEFAULT 0, gender INT, orientation INT, position VARCHAR(255))"
     connection.query(sql, function(err, result) {
       if (err) throw err
       console.log('Table created...')
-      connection.query('INSERT INTO users (nickname, email, firstname, lastname, password, age, gender, orientation) VALUES ?', [fakedata], function(err, result) {
+      connection.query('INSERT INTO users (nickname, email, firstname, lastname, password, age, gender, orientation, position) VALUES ?', [fakeProfiles()], function(err, result) {
         if (err) throw err
         console.log('Fake data added to table')
         connection.query('SELECT * FROM users', function(err, results) {
           if (err) throw err
-          console.log(results[0].id)
-          console.log(results[0].nickname)
-          console.log(results[0].email)
-          console.log(results[0].firstname)
-          console.log(results[0].lastname)
-          console.log(results[0].password)
-          console.log(results[0].popularity)
-          console.log(results[0].age)
-          console.log(results[0].gender)
-          console.log(results[0].orientation)
+          console.log(results[0])
 
           connection.query('DROP TABLE IF EXISTS taglink', function(err, results) {
             connection.query('DROP TABLE IF EXISTS tags', function(err, results) {
               connection.query('DROP TABLE IF EXISTS bio', function(err, results) {
                 connection.query('DROP TABLE IF EXISTS pictures', function(err, results) {
                   connection.query('CREATE TABLE taglink (idUser INT, idTag INT)', function(err, results) {
-                    connection.query('CREATE TABLE tags (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE)', function(err, results) {
-                      connection.query('CREATE TABLE bio (idUser INT PRIMARY KEY, content LONGTEXT)', function(err, results) {
-                        connection.query('CREATE TABLE pictures (id INT AUTO_INCREMENT PRIMARY KEY, idUser INT, picture VARCHAR(255), date TIMESTAMP)', function(err, results) {
-                          if (err) throw err
-                          connection.end()
+                    const tags = fakeTags()
+                    connection.query('INSERT INTO taglink (idUser, idTag) VALUES ?', [tags.taglink], function(err, result) {
+                      connection.query('CREATE TABLE tags (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE)', function(err, results) {
+                        connection.query('INSERT INTO tags (id, name) VALUES ?', [tags.tags], function(err, result) {
+                          connection.query('CREATE TABLE bio (idUser INT PRIMARY KEY, content LONGTEXT)', function(err, results) {
+                            connection.query('CREATE TABLE pictures (id INT AUTO_INCREMENT PRIMARY KEY, idUser INT, picture VARCHAR(255), date TIMESTAMP)', function(err, results) {
+                              if (err) throw err
+                              connection.end()
+                            })
+                          })
                         })
                       })
                     })

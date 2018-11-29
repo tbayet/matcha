@@ -13,6 +13,7 @@
     </v-flex>
 
     <v-flex xs12 sm4 pa-2>
+      <interact v-if="!owner" :id="id"></interact>
       <bio :owner="owner" :id="id"></bio>
     </v-flex>
   </v-layout>
@@ -24,6 +25,7 @@
   import Bio from './profil/Bio.vue'
   import Account from './profil/Account.vue'
   import Pictures from './profil/Pictures.vue'
+  import Interact from './profil/Interact.vue'
 
   export default {
     props: ['nickname'],
@@ -52,7 +54,8 @@
       'tags': Tags,
       'bio': Bio,
       'account': Account,
-      'pictures': Pictures
+      'pictures': Pictures,
+      'interact': Interact
     }
   }
 </script>
