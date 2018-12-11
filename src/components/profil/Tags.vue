@@ -44,12 +44,14 @@
     mounted() {
       axios.get('api/users/tags', {
         params: {
-          id: this.id,
-          token: this.$user.token,
+          userId: this.$user.id,
+          userToken: this.$user.token,
+          id: this.id
         }
       }).then(response => {
         if (response.data)
           this.chips = response.data.map(v => (v.name))
+        console.log("tags:", response.data)
       })
     },
 

@@ -8,6 +8,8 @@ import Welcome from './components/Welcome'
 import Profil from './components/Profil'
 import ResetPassword from './components/ResetPassword'
 import Browse from './components/Browse'
+import Chat from './components/Chat'
+import Matches from './components/Matches'
 
 let globalData = new Vue({
   data: {
@@ -89,9 +91,12 @@ const router = new VueRouter({
   routes : [
     { path: '/welcome', component: Welcome, alias: '/', beforeEnter: loggout_page},
     { path: '/profil', component: Profil, props: true, beforeEnter: logged_page},
-    { path: '/profil/:nickname', component: Profil, props: true, beforeEnter: logged_page},
+    { path: '/profil/:id', component: Profil, props: true, beforeEnter: logged_page},
     { path: '/resetpassword', component: ResetPassword, beforeEnter: resetPassword},
     { path: '/browse', component: Browse, beforeEnter: logged_page},
+    { path: '/chat', component: Chat, beforeEnter: logged_page},
+    { path: '/matches', component: Matches, props: true, beforeEnter: logged_page},
+    { path: '/matches/:onglet', component: Matches, props: true, beforeEnter: logged_page},
     { path: '*', redirect: '/' }
   ]
 })

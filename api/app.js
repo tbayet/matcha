@@ -3,24 +3,24 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+var expressSanitizer = require('express-sanitizer');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
 var app = express();
-
 var mysql = require('mysql')
 
+let con = mysql.createConnection({
+  host     : 'localhost',
+  user     : 'admin',
+  password : 'password',
+  database : 'matcha_db'
+});
+con.connect()
 app.use(function(req, res, next){
-  console.log("Connected");
-	res.locals.connection = mysql.createConnection({
-		host     : 'localhost',
-		user     : 'admin',
-		password : 'password',
-		database : 'matcha_db'
-	});
-  console.log("-----Connection-----")
-	res.locals.connection.connect();
+	res.locals.connection = con
+//	res.locals.connection.connect();
 	next();
 });
 
@@ -32,6 +32,7 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+app.use(expressSanitizer());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
@@ -51,6 +52,7 @@ app.use(function(err, req, res, next) {
   // render the error page
   res.status(err.status || 500);
   res.render('error');
+  res.locals.connection.end()
 });
 
 module.exports = app;

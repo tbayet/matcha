@@ -17,7 +17,7 @@
           <v-toolbar-title>Account settings</v-toolbar-title>
           <v-spacer></v-spacer>
           <v-toolbar-items>
-            <v-btn dark flat @click.native="dialog = false">Cancel</v-btn>
+            <v-btn dark flat @click.native="cancel">Cancel</v-btn>
             <v-btn dark flat @click.native="submit">Save</v-btn>
           </v-toolbar-items>
         </v-toolbar>
@@ -159,7 +159,6 @@
                   if (b.countryCode == "BEL") return 1
                   return -1
                 })
-                console.log("sorted", response.data.postalcodes)
                 this.newProfile.position.lat = response.data.postalcodes[0].lat
                 this.newProfile.position.lng = response.data.postalcodes[0].lng
               }
@@ -180,11 +179,10 @@
             username: this.$APIKEY
           }
         }).then(response => {
-          console.log("RESPONSE", response.data)
           if (response.data && response.data.postalCodes && response.data.postalCodes.length) {
-            console.log("length yeh")
             this.switchZip = true
             this.newProfile.position.zip = response.data.postalCodes[0].postalCode
+            this.$forceUpdate()
           } else {
             this.newProfile.position.zip = ''
           }
@@ -219,7 +217,6 @@
       getCurrentPositionByIP() {
         axios.get('https://api.ipify.org/?format=json').then(response => {
           if (response.data) {
-            console.log(response.data.ip)
             axios.get('http://ip-api.com/json', {
               params: {
                 ip: response.data.ip
@@ -228,8 +225,9 @@
               if (res.data) {
                 this.switchZip = true
                 this.newProfile.position.lat = res.data.lat
-                this.newProfile.position.lng = res.data.lon,
+                this.newProfile.position.lng = res.data.lon
                 this.newProfile.position.zip = res.data.zip
+                this.$forceUpdate()
               }
             })
           }
@@ -266,7 +264,6 @@
             this.profile.position = this.parsePosition(this.profile.position)
             this.newProfile = JSON.parse(JSON.stringify(this.profile))
             this.requestZipCode(this.profile.position.lat, this.profile.position.lng)
-            console.log(this.newProfile)
           }
         })
       },
@@ -285,6 +282,11 @@
       },
       unparsePosition: pos => (pos.lat + "," + pos.lng + "," + pos.zip),
 
+      cancel () {
+        this.dialog = false
+        this.newProfile = JSON.parse(JSON.stringify(this.profile))
+        this.requestZipCode(this.profile.position.lat, this.profile.position.lng)
+      },
       submit () {
         const update = {
           password: this.newProfile.password ? this.newProfile.password : false,
@@ -296,7 +298,6 @@
           orientation: this.newProfile.orientation ? (this.newProfile.orientation == this.profile.orientation ? false : parseInt(this.newProfile.orientation)) : false,
           position: this.newProfile.position.zip ? (this.comparePosition(this.newProfile.position, this.profile.position) ? false : this.newProfile.position) : false
         }
-        console.log(update)
         const keys = Object.keys(update)
         let hasChanged = false
         keys.map(key => {

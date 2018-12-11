@@ -12,18 +12,29 @@ const connection = mysql.createConnection({
 })
 
 const fakeProfiles = () => { // Add popularity ?
+  const fakelatlng = (min, max, fixed) => {
+    return (Math.random() * (max - min) + min).toFixed(fixed);
+  }
   let res = []
   for (i = 0; i < FAKENUMBER; i++) {
+    let fakeNickname = faker.internet.userName()
+    while (res.findIndex(elem => (elem[0] == fakeNickname)) != -1) {
+      fakeNickname = faker.internet.userName().slice(0, 16)
+    }
+    let fakeEmail = faker.internet.email()
+    while (res.findIndex(elem => (elem[1] == fakeEmail)) != -1) {
+      fakeEmail = faker.internet.email()
+    }
     res.push([
-      faker.internet.userName(),
-      faker.internet.email(),
-      faker.name.firstName(),
-      faker.name.lastName(),
+      fakeNickname,
+      fakeEmail,
+      faker.name.firstName().slice(0, 16),
+      faker.name.lastName().slice(0, 16),
       "Merde21000",
-      "19" + (Math.floor(Math.random() * 6) + 3) +""+ Math.floor(Math.random() * 10) + "-0" + Math.floor(Math.random() * 10) + "-" + Math.floor(Math.random() * 3) + "" + Math.floor(Math.random() * 9 + 1),
+      "19" + (Math.floor(Math.random() * 6) + 3) +""+ Math.floor(Math.random() * 10) + "-0" + Math.floor(Math.random() * 9 + 1) + "-" + Math.floor(Math.random() * 3) + "" + Math.floor(Math.random() * 9 + 1),
       Math.floor(Math.random() * 2) + 1, // gender
       Math.floor(Math.random() * 3) + 1, // orientation
-      faker.address.latitude() + "," + faker.address.longitude()
+      fakelatlng( 44.671094, 49.498904, 6) + "," + fakelatlng(0.536116, 4.753684, 6)
     ])
   }
   return res
@@ -34,9 +45,8 @@ const fakeTags = () => {
   for (let i = 0; i < 50; i++) {
     tmp.push(faker.commerce.color())
   }
-  let i = 0
+  let i = 1
   res.tags = tmp.filter((curr, index) => (tmp.indexOf(curr) == index)).map((elem) => ([i++, elem]))
-
   for (let j = 0; j < FAKENUMBER; j++) {
     const max = Math.floor(Math.random() * 8) + 1
     for (let i = 0; i < max; i++) {
@@ -47,39 +57,60 @@ const fakeTags = () => {
   return res
 }
 
-console.log(fakeProfiles(), fakeTags())
+const fakeImages = (profiles) => {
+  let res = []
+  for (let i = 0; i < FAKENUMBER; i++) {
+    res.push([i + 1, "fake" + (profiles[i][6] == 1 ? "M" : "F") + Math.floor(Math.random() * 20 + 1) + ".jpg", new Date()])
+  }
+  return res
+}
 
 connection.connect(function(err) {
   if (err) throw err
   var sql = "DROP TABLE  IF EXISTS users";
   connection.query(sql, function (err, result) {
     if (err) throw err;
-    console.log("Table deleted...");
-
-    sql = "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, nickname VARCHAR(255) NOT NULL UNIQUE, email VARCHAR(255) UNIQUE, firstname VARCHAR(255), lastname VARCHAR(255), password VARCHAR(255), age VARCHAR(255), popularity INT DEFAULT 0, gender INT, orientation INT, position VARCHAR(255))"
+    sql = "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, nickname VARCHAR(255) NOT NULL UNIQUE, email VARCHAR(255) UNIQUE, firstname VARCHAR(255), lastname VARCHAR(255), password VARCHAR(255), age VARCHAR(255), popularity INT DEFAULT 0, gender INT, orientation INT, position VARCHAR(255), report INT DEFAULT 0, lastOnline TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
     connection.query(sql, function(err, result) {
-      if (err) throw err
-      console.log('Table created...')
-      connection.query('INSERT INTO users (nickname, email, firstname, lastname, password, age, gender, orientation, position) VALUES ?', [fakeProfiles()], function(err, result) {
-        if (err) throw err
-        console.log('Fake data added to table')
-        connection.query('SELECT * FROM users', function(err, results) {
-          if (err) throw err
-          console.log(results[0])
-
+      if (err) throw err;
+      connection.query('SELECT * FROM users', function(err, results) {
+        const profiles = fakeProfiles()
+        connection.query('INSERT INTO users (nickname, email, firstname, lastname, password, age, gender, orientation, position) VALUES ?', [profiles], function(err, result) {
           connection.query('DROP TABLE IF EXISTS taglink', function(err, results) {
             connection.query('DROP TABLE IF EXISTS tags', function(err, results) {
               connection.query('DROP TABLE IF EXISTS bio', function(err, results) {
                 connection.query('DROP TABLE IF EXISTS pictures', function(err, results) {
-                  connection.query('CREATE TABLE taglink (idUser INT, idTag INT)', function(err, results) {
-                    const tags = fakeTags()
-                    connection.query('INSERT INTO taglink (idUser, idTag) VALUES ?', [tags.taglink], function(err, result) {
-                      connection.query('CREATE TABLE tags (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE)', function(err, results) {
-                        connection.query('INSERT INTO tags (id, name) VALUES ?', [tags.tags], function(err, result) {
-                          connection.query('CREATE TABLE bio (idUser INT PRIMARY KEY, content LONGTEXT)', function(err, results) {
-                            connection.query('CREATE TABLE pictures (id INT AUTO_INCREMENT PRIMARY KEY, idUser INT, picture VARCHAR(255), date TIMESTAMP)', function(err, results) {
-                              if (err) throw err
-                              connection.end()
+                  connection.query('DROP TABLE IF EXISTS matches', function(err, results) {
+                    connection.query('DROP TABLE IF EXISTS visits', function(err, results) {
+                      connection.query('DROP TABLE IF EXISTS notifications', function(err, results) {
+                        connection.query('DROP TABLE IF EXISTS blocks', function(err, results) {
+                          connection.query('DROP TABLE IF EXISTS messages', function(err, results) {
+                            connection.query('CREATE TABLE taglink (idUser INT, idTag INT)', function(err, results) {
+                              const tags = fakeTags()
+                              connection.query('INSERT INTO taglink (idUser, idTag) VALUES ?', [tags.taglink], function(err, result) {
+                                connection.query('CREATE TABLE tags (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE)', function(err, results) {
+                                  connection.query('INSERT INTO tags (id, name) VALUES ?', [tags.tags], function(err, result) {
+                                    connection.query('CREATE TABLE bio (idUser INT PRIMARY KEY, content LONGTEXT)', function(err, results) {
+                                      connection.query('CREATE TABLE pictures (id INT AUTO_INCREMENT PRIMARY KEY, idUser INT, picture VARCHAR(255), date TIMESTAMP)', function(err, results) {
+                                        connection.query('INSERT INTO pictures (idUser, picture, date) VALUES ?', [fakeImages(profiles)], function(err, result) {
+                                          connection.query('CREATE TABLE matches (idUser INT, idLiked INT, date TIMESTAMP)', function(err, results) {
+                                            connection.query('CREATE TABLE visits (idUser INT, idVisited INT, date TIMESTAMP)', function(err, results) {
+                                              connection.query('CREATE TABLE notifications (id INT AUTO_INCREMENT PRIMARY KEY, idUser INT, idNotifier INT, type INT, date TIMESTAMP, readed INT DEFAULT 0)', function(err, results) {
+                                                connection.query('CREATE TABLE blocks (idUser INT, idBlocked INT)', function(err, results) {
+                                                  connection.query('CREATE TABLE messages (idUser INT, idMessaged INT, message VARCHAR(1500), date TIMESTAMP)', function(err, results) {
+                                                    if (err) throw err;
+                                                    connection.end()
+                                                  })
+                                                })
+                                              })
+                                            })
+                                          })
+                                        })
+                                      })
+                                    })
+                                  })
+                                })
+                              })
                             })
                           })
                         })
@@ -93,8 +124,5 @@ connection.connect(function(err) {
         })
       })
     })
-  });
-
-
-
+  })
 })

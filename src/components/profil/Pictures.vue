@@ -108,7 +108,11 @@
       },
       loadGallery() {
         axios.get('api/users/pictures', {
-          params: this.$user
+          params: {
+            userId: this.$user.id,
+            userToken: this.$user.token,
+            id: this.id
+          }
         }).then(response => {
           if (response.data) {
             if (response.data.length == 0)
