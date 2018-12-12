@@ -8,7 +8,9 @@ const connection = mysql.createConnection({
   host: 'localhost',
   user: 'admin',
   password: 'password',
-  database: 'matcha_db'
+  database: 'matcha_db',
+  insecureAuth: true,
+  socketPath: '/tmp/mysql.sock'
 })
 
 const fakeProfiles = () => { // Add popularity ?
