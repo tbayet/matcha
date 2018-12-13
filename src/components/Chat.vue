@@ -6,8 +6,9 @@
         <v-list-tile
           v-for="(conversation, index) in conversations"
           :key="index"
-          :to="routeTo(conversation.idLiked, conversation.idNotification, conversation.readed)"
-          :class="conversation.readed ? '' : 'bg_notif'"
+          :to="'/chat?id='+conversation.idLiked"
+          @click="routeTo(conversation.idLiked, conversation.idNotification, conversation.readed)"
+          :class="(conversation.readed ? '' : 'bg_notif') + (conversation.idLiked == id ? ' selected' : '')"
         >
           <v-list-tile-title>
             {{conversation.nickname}}
@@ -73,6 +74,7 @@
     },
     methods: {
       routeTo (idProfile, idNotification, readed) {
+        clearInterval(this.interval)
         if (!readed) {
           axios.post('api/users/readNotification', {
             userId: this.$user.id,
@@ -80,7 +82,6 @@
             id: idNotification
           })
         }
-        return ({path:'/chat', query: {id: idProfile}})
       },
       getConversations () {
         axios.get('api/users/conversations', {
@@ -96,6 +97,7 @@
               this.id = this.conversations[0].idLiked
             }
             clearInterval(this.interval)
+            this.getMessages()
             this.interval = setInterval(() => {
               this.getMessages()
             }, 3000)
@@ -112,10 +114,14 @@
         }).then(response => {
           if (response.data && response.data.length) {
             if (this.messages.length != response.data.length) {
-              document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight
+              this.messages = response.data
+              this.$nextTick(() => {
+                document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight
+              })
             }
-            this.messages = response.data
           }
+          else
+            this.messages = []
         })
       },
       sendMessage () {
@@ -138,6 +144,9 @@
 <style>
   .bg_notif {
     background-color: 'blue lighten-5';
+  }
+  .selected {
+    border : solid 2px rgb(49, 106, 176);
   }
   .chat-window {
     height: 75vh;

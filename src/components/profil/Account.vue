@@ -3,6 +3,8 @@
     <div>
       <h2>{{profile.nickname}} <span v-if="profile.age">({{calcAge(profile.age)}} yo)</span></h2>
       <p class="grey--text">{{profile.firstname}} {{profile.lastname}}</p>
+      <h6 v-if="profile.lastOnline">Last connection: {{new Date(profile.lastOnline).toDateString()}}</h6>
+      <h5 v-if="!profile.lastOnline">* Online *</h5>
     </div>
     <v-spacer></v-spacer>
     <v-spacer>{{profile.popularity}}</v-spacer>
@@ -257,6 +259,7 @@
           params: this.$user
         }).then(response => {
           if (response.data) {
+            console.log(response.data)
             this.profile = response.data
             this.profile.password = ''
             this.profile.gender = this.profile.gender ? this.profile.gender.toString() : ''

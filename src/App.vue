@@ -69,7 +69,7 @@
     </v-toolbar>
 
     <v-content>
-      <router-view :key="$route.name + ($route.params.id || $route.params.onglet || '')"></router-view>
+      <router-view :key="$route.name + ($route.params.id || $route.params.onglet || $route.query.id || '')"></router-view>
     </v-content>
   </v-app>
 </template>

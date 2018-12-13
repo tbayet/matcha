@@ -360,20 +360,24 @@ router.post('/profiles', function(req, res, next) {
 });
 
 router.get('/profile/:id', function(req, res, next) {
-  if (check_key(req.query.id, req.query.token)) {
-    res.locals.connection.query("SELECT nickname, email, popularity, firstname, lastname, age, gender, orientation, position FROM users WHERE id=?", [parseInt(req.params.id)], function(err, result) {
+  if (check_key(req.query.id, req.query.token) && req.params.id) {
+    res.locals.connection.query("SELECT nickname, email, popularity, firstname, lastname, age, gender, orientation, position, lastOnline FROM users WHERE id=?", [parseInt(req.params.id)], function(err, result) {
+      if (err) throw err
       if (result.length == 1) {
-        result[0].online = isOnline(req.params.id)
+        result[0].lastOnline = isOnline(req.params.id) ? false : result[0].lastOnline
         if (req.params.id != req.query.id) {
           delete result[0].email
           res.locals.connection.query("SELECT idUser FROM visits WHERE idUser=? AND idVisited=?", [req.query.id, parseInt(req.params.id)], function(err, already) {
+            if (err) throw err
             if (already.length) {
               res.locals.connection.query("UPDATE visits SET date=? WHERE idUser=? AND idVisited=?", [new Date(), req.query.id, parseInt(req.params.id)], function(err, result2) {
+                if (err) throw err
                 pushNotification(req.params.id, req.query.id, 2, res)
                 res.send(result[0]);
               })
             } else {
               res.locals.connection.query("INSERT INTO visits (idUser, idVisited, date) VALUES (?)", [[req.query.id, parseInt(req.params.id), new Date()]], function(err, result2) {
+                if (err) throw err
                 pushNotification(req.params.id, req.query.id, 2, res)
                 res.send(result[0]);
               })
@@ -499,17 +503,22 @@ router.get('/tags', function(req, res, next) {
 
 router.post('/addpicture', function(req, res, next) {
   if (check_key(req.body.id, req.body.token)) {
-    const baseUrl = "@/assets/images/"
-    const url = req.body.id + "-" + new Date().getTime()
-    const wid = req.body.picture.substring(req.body.picture.indexOf(',') + 1)
-    const format = req.body.picture.substring(req.body.picture.indexOf('/') + 1, req.body.picture.indexOf(';'))
-    fs.appendFile("public/images/" +  url + '.' + format, wid, 'base64', function (err) {
-      if (err) throw err;
-      res.locals.connection.query("INSERT INTO pictures (idUser, picture, date) VALUES (?)", [[req.body.id, url + '.' + format, new Date()]], function(err, result) {
-        if (err) throw err
-        res.send(true)
-      })
-    });
+    res.locals.connection.query("SELECT id FROM pictures WHERE idUser=?", [req.body.id], function(err, result) {
+      if (result.length < 5) {
+        const baseUrl = "@/assets/images/"
+        const url = req.body.id + "-" + new Date().getTime()
+        const wid = req.body.picture.substring(req.body.picture.indexOf(',') + 1)
+        const format = req.body.picture.substring(req.body.picture.indexOf('/') + 1, req.body.picture.indexOf(';'))
+        fs.appendFile("public/images/" +  url + '.' + format, wid, 'base64', function (err) {
+          if (err) throw err;
+          res.locals.connection.query("INSERT INTO pictures (idUser, picture, date) VALUES (?)", [[req.body.id, url + '.' + format, new Date()]], function(err, result) {
+            if (err) throw err
+            addPopularity(req.body.id, res, 1)
+            res.send(true)
+          })
+        })
+      }
+    })
   } else
     res.send(false)
 });
@@ -527,6 +536,7 @@ router.post('/deletepicture', function(req, res, next) {
   if (check_key(req.body.user.id, req.body.user.token)) {
     res.locals.connection.query("DELETE FROM pictures WHERE id=?", [parseInt(req.body.imgId)], function(err, result) {
       if (err) throw err
+      removePopularity(req.body.user.id, res, 1)
       res.send(true)
     })
   } else
@@ -630,6 +640,7 @@ router.post('/match', function(req, res, next) {
                 res.locals.connection.query("DELETE FROM matches WHERE idUser=? AND idLiked=?", [req.body.userId, parseInt(req.body.id)], function(err, result) {
                   if (likeMe.length)
                     pushNotification(req.body.id, req.body.userId, 5, res)
+                  removePopularity(req.body.id, res, 10)
                   res.send(true)
                 })
               } else {
@@ -638,6 +649,7 @@ router.post('/match', function(req, res, next) {
                     pushNotification(req.body.id, req.body.userId, 4, res)
                   else
                     pushNotification(req.body.id, req.body.userId, 1, res)
+                  addPopularity(req.body.id, res, 10)
                   res.send(true)
                 })
               }
@@ -802,7 +814,7 @@ router.post('/message', function(req, res, next) {
   if (check_key(req.body.userId, req.body.userToken)) {
     res.locals.connection.query("INSERT INTO messages (idUser, idMessaged, message, date) VALUES (?)", [[req.body.userId, parseInt(req.body.id), req.sanitize(req.body.message), new Date()]], function(err, blocked) {
       if (err) throw err
-      pushNotification(req.body.id, req.body.idUser, 3, res)
+      pushNotification(req.body.id, req.body.userId, 3, res)
       res.send(true)
     })
   } else
@@ -825,4 +837,19 @@ const pushNotification = (idUser, idNotifier, type, res) => {
   })
 }
 
+const removePopularity = (id, res, amont) => {
+  res.locals.connection.query("UPDATE users SET popularity=0 WHERE id=? AND popularity < ?", [parseInt(id), amount], function(err, result) {
+    res.locals.connection.query("UPDATE users SET popularity=popularity - ? WHERE id=? AND popularity >= ?", [amount, parseInt(id), amount], function(err, result) {
+      if (err) throw err;
+    })
+  })
+}
+const addPopularity = (id, res, amount) => {
+  const limit = 500 - amount
+  res.locals.connection.query("UPDATE users SET popularity=500 WHERE id=? AND popularity > ?", [parseInt(id), limit], function(err, result) {
+    res.locals.connection.query("UPDATE users SET popularity=popularity + ? WHERE id=? AND popularity <= ?", [amount, parseInt(id), limit], function(err, result) {
+      if (err) throw err;
+    })
+  })
+}
 module.exports = router;

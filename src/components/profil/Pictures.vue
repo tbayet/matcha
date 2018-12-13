@@ -53,7 +53,7 @@
         </v-card>
      </v-dialog>
     </span>
-    <v-carousel style="background: grey" :cycle="false" :hide-controls="!gallery.length">
+    <v-carousel height="60vh" style="background: grey" :cycle="false" :hide-controls="!gallery.length">
       <v-carousel-item
         v-for="(img,i) in gallery"
         :key="i"

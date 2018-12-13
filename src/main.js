@@ -51,7 +51,6 @@ const checkUserRights = () => {
 
 const logged_page = (to, from, next) => {
   checkUserRights().then(response => {
-    console.log(response.data)
     if (response.data)
       next()
     else

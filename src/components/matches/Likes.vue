@@ -6,9 +6,9 @@
     <v-list-tile
       v-for="(like, index) in likes"
       :key="index"
-      :to="'/profil/'+like.idLiked"
+      :to="'/profil/'+like.idUser"
       :class="like.readed ? '' : 'bg_notif'"
-      @click="readNotif(like.readed, like.id)"
+      @click="readNotif(like.readed, like.idNotification)"
     >
       <v-list-tile-title>
         {{like.nickname}}

@@ -82,11 +82,8 @@
         axios.post('api/users/mailpassword', {
           nickname: this.nickname
         }).then(response => {
-          if (!response.data)
-            console.log("Unknown nickname")
-          else {
+          if (response.data)
             this.email = response.data
-          }
         })
       },
       submit () {
@@ -100,9 +97,7 @@
           d.setTime(d.getTime() + (48*3600*1000));
           var expires = "Expires="+ d.toUTCString();
           document.cookie = "id=" + data.id+ "; " + expires
-          //document.cookie = "nickname=" + this.nickname + "; " + expires + "; Secure; HttpOnly"
           document.cookie = "token=" + data.token + "; " + expires
-          console.log(data)
 
           this.$router.push('profil/')
         }

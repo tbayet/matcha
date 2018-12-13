@@ -8,7 +8,7 @@
       :key="index"
       :to="'/profil/' + visiter.idUser"
       :class="visiter.readed ? '' : 'bg_notif'"
-      @click="readNotif(visiter.readed, visiter.id)"
+      @click="readNotif(visiter.readed, visiter.idNotification)"
     >
       <v-list-tile-title>
         {{visiter.nickname}}

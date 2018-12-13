@@ -51,7 +51,6 @@
       }).then(response => {
         if (response.data)
           this.chips = response.data.map(v => (v.name))
-        console.log("tags:", response.data)
       })
     },
 

@@ -6,9 +6,9 @@
     <v-list-tile
       v-for="(match, index) in matches"
       :key="index"
-      :to="'/profil/' + idLiked"
+      :to="'/profil/' + match.idLiked"
       :class="match.readed ? '' : 'bg_notif'"
-      @click="readNotif(match.readed, match.id)"
+      @click="readNotif(match.readed, match.idNotification)"
     >
       <v-list-tile-title>
         {{match.nickname}}
