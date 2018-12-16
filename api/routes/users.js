@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const fs = require('fs')
 const nodemailer = require('nodemailer')
+const sha224 = require('js-sha256').sha224
 
 let resetPassword = []
 let confirmMail = []
@@ -94,11 +95,6 @@ const validEmail = (v, req) => {
     return false
   return true
 }
-const validPassword = (v, req) => {
-  if (!v || v.length < 8 || v.length > 26 || !/[0-9]/.test(v) || !/[A-Z]/.test(v) || !/[a-z]/.test(v) || v != req.sanitize(v))
-    return false
-  return true
-}
 const validPosition = v => {
   if (!v || !/-?\d+\.\d+,-?\d+\.\d+,\d{4,5}/.test(v))
     return false
@@ -110,11 +106,11 @@ const validOrientation = v => (v >= 1 && v <=3)
 /* Valid user connection */
 //  PENSER AU LOWERCASE
 router.post('/connect', function(req, res, next) {
-  if (validName(req.body.nickname, req) && validPassword(req.body.password, req)) {
-    res.locals.connection.query("SELECT id, password FROM users WHERE nickname=?", [req.body.nickname, req.body.password], function(err, result) {
+  if (validName(req.body.nickname, req)) {
+    res.locals.connection.query("SELECT id, password FROM users WHERE nickname=?", [req.body.nickname], function(err, result) {
       if (err) throw err
       if (result.length == 1) {
-        if (result[0].password == req.body.password && result[0].password != ".") {
+        if (result[0].password == sha224(req.sanitize(req.body.password)) && result[0].password != ".") {
           let key = generateKey(result[0].id, res)
           res.send({token: key, id: result[0].id})
         } else
@@ -129,11 +125,11 @@ router.post('/connect', function(req, res, next) {
 /* Add a user after registering */
 router.post('/add', function(req, res, next) {
   let data = req.body.user
-  if (validName(data.nickname, req) && validEmail(data.email, req) && validName(data.firstname, req) && validName(data.lastname, req) && validPassword(data.password, req)) {
+  if (validName(data.nickname, req) && validEmail(data.email, req) && validName(data.firstname, req) && validName(data.lastname, req)) {
     res.locals.connection.query("SELECT nickname FROM users WHERE nickname=?", [data.nickname], function(err, result) {
       if (!result.length) {
         res.locals.connection.query("INSERT INTO users (nickname, email, firstname, lastname, password) VALUES (?)", [[data.nickname, data.email, data.firstname, data.lastname, "."]], function(err, result) {
-          let key = addConfirm(data.nickname, data.password)
+          let key = addConfirm(data.nickname, sha256(req.sanitize(data.password)))
           sendConfirmMail(key, data.email)
           res.send(true)
         })
@@ -187,8 +183,10 @@ router.post('/edit', function(req, res, next) {
       delete props.lastOnline
     if (!props.email || !validEmail(props.email, req))
       delete props.email
-    if (!props.password || !validPassword(props.password, req))
+    if (!props.password)
       delete props.password
+    else
+      props.password = sha224(req.sanitize(props.password))
     if (!props.firstname || !validName(props.firstname, req))
       delete props.firstname
     if (!props.lastname || !validName(props.lastname, req))
@@ -219,8 +217,8 @@ router.post('/edit', function(req, res, next) {
 
 /* Change an user password */
 router.post('/password', function(req, res, next) {
-  if (validName(req.body.nickname, req) && validPassword(req.body.password, req) && req.body.nickname in resetPassword && resetPassword[req.body.nickname] == req.body.key) {
-    res.locals.connection.query("UPDATE users SET password=? WHERE nickname=?", [req.body.password, req.body.nickname], function(err, result) {
+  if (validName(req.body.nickname, req) && req.body.password && req.body.nickname in resetPassword && resetPassword[req.body.nickname] == req.body.key) {
+    res.locals.connection.query("UPDATE users SET password=? WHERE nickname=?", [sha224(req.sanitize(req.body.password)), req.body.nickname], function(err, result) {
       if (err) throw err
       delete resetPassword[req.body.nickname]
       res.send(true)
@@ -502,7 +500,7 @@ router.get('/tags', function(req, res, next) {
 });
 
 router.post('/addpicture', function(req, res, next) {
-  if (check_key(req.body.id, req.body.token)) {
+  if (check_key(req.body.id, req.body.token) && req.body.picture && req.body.picture.substring(req.body.picture.indexOf(':') + 1, req.body.picture.indexOf('/')) == "image" ) {
     res.locals.connection.query("SELECT id FROM pictures WHERE idUser=?", [req.body.id], function(err, result) {
       if (result.length < 5) {
         const baseUrl = "@/assets/images/"
@@ -517,7 +515,8 @@ router.post('/addpicture', function(req, res, next) {
             res.send(true)
           })
         })
-      }
+      } else
+        res.send(false)
     })
   } else
     res.send(false)
@@ -634,7 +633,7 @@ router.post('/match', function(req, res, next) {
         if (req.body.userId != req.body.id) {
           res.locals.connection.query("SELECT idUser FROM matches WHERE idUser=? AND idLiked=?", [req.body.userId, parseInt(req.body.id)], function(err, likeIt) {
             if (err) throw err
-            res.locals.connection.query("SELECT idUser FROM matches WHERE idUser=? AND idLiked=?", [parseInt(req.body.id), req.body.idUser], function(err, likeMe) {
+            res.locals.connection.query("SELECT idUser FROM matches WHERE idUser=? AND idLiked=?", [parseInt(req.body.id), req.body.userId], function(err, likeMe) {
               if (err) throw err
               if (likeIt.length) {
                 res.locals.connection.query("DELETE FROM matches WHERE idUser=? AND idLiked=?", [req.body.userId, parseInt(req.body.id)], function(err, result) {
@@ -780,7 +779,6 @@ router.get('/conversations', function(req, res, next) {
             return elem
           })
           ret.sort((a, b) => (a.date - b.date))
-          console.log(ret)
           res.locals.connection.query("SELECT id, idUser, idNotifier, readed FROM notifications WHERE idUser=? AND idNotifier IN (?) AND type=3", [req.query.userId, ret.map(elem => (elem.idLiked))], function(err, result2) {
             res.locals.connection.query("SELECT id, nickname FROM users WHERE id IN (?)", [ret.map(elem => (elem.idLiked))], function(err, result3) {
               ret = ret.map((elem, index) => {
@@ -829,15 +827,20 @@ router.post('/message', function(req, res, next) {
   5: Unliked Back (unmatche)
 */
 const pushNotification = (idUser, idNotifier, type, res) => {
-  res.locals.connection.query("DELETE IGNORE FROM notifications WHERE idUser=? AND idNotifier=? AND type=?", [parseInt(idUser), parseInt(idNotifier), type], function(err, result) {
+  res.locals.connection.query("SELECT idUser FROM blocks WHERE idBlocked=? AND idUser=?", [idNotifier, idUser], function(err, result) {
     if (err) throw err;
-    res.locals.connection.query("INSERT INTO notifications (idUser, idNotifier, type, date) VALUES (?)", [[parseInt(idUser), parseInt(idNotifier), type, new Date()]], function(err, result) {
-      if (err) throw err;
-    })
+    if (!result.length) {
+      res.locals.connection.query("DELETE IGNORE FROM notifications WHERE idUser=? AND idNotifier=? AND type=?", [parseInt(idUser), parseInt(idNotifier), type], function(err, result) {
+        if (err) throw err;
+        res.locals.connection.query("INSERT INTO notifications (idUser, idNotifier, type, date) VALUES (?)", [[parseInt(idUser), parseInt(idNotifier), type, new Date()]], function(err, result) {
+          if (err) throw err;
+        })
+      })
+    }
   })
 }
 
-const removePopularity = (id, res, amont) => {
+const removePopularity = (id, res, amount) => {
   res.locals.connection.query("UPDATE users SET popularity=0 WHERE id=? AND popularity < ?", [parseInt(id), amount], function(err, result) {
     res.locals.connection.query("UPDATE users SET popularity=popularity - ? WHERE id=? AND popularity >= ?", [amount, parseInt(id), amount], function(err, result) {
       if (err) throw err;

@@ -52,6 +52,7 @@
 
 <script>
   import axios from 'axios'
+  import { sha224 } from 'js-sha256'
 
   export default {
     data: () => ({
@@ -73,9 +74,8 @@
           axios.post('/api/users/password', {
             nickname: this.$route.query.nickname,
             key: this.$route.query.key,
-            password: this.password
+            password: sha224(this.password)
           }).then((response) => {
-            console.log(response.data)
             if (response.data) {
               this.$router.push('/welcome')
             } else {

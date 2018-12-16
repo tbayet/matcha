@@ -3,6 +3,7 @@
 const mysql = require('mysql')
 const faker = require('faker/locale/fr')
 const FAKENUMBER = 200
+const sha224 = require('js-sha256').sha224
 
 const connection = mysql.createConnection({
   host: 'localhost',
@@ -32,7 +33,7 @@ const fakeProfiles = () => { // Add popularity ?
       fakeEmail,
       faker.name.firstName().slice(0, 16),
       faker.name.lastName().slice(0, 16),
-      "Merde21000",
+      sha224(sha224("Merde21000")),
       "19" + (Math.floor(Math.random() * 6) + 3) +""+ Math.floor(Math.random() * 10) + "-0" + Math.floor(Math.random() * 9 + 1) + "-" + Math.floor(Math.random() * 3) + "" + Math.floor(Math.random() * 9 + 1),
       Math.floor(Math.random() * 2) + 1, // gender
       Math.floor(Math.random() * 3) + 1, // orientation

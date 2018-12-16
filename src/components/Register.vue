@@ -55,6 +55,8 @@
 
 <script>
   import axios from 'axios'
+  import { sha224 } from 'js-sha256'
+
 
   export default {
     methods: {
@@ -62,7 +64,13 @@
         this.alert = {}
         if (this.$refs.form.validate()) {
           axios.post('/api/users/add', {
-            user: this.user
+            user: {
+              nickname: this.user.nickname,
+              email: this.user.email,
+              firstname: this.user.firstname,
+              lastname: this.user.lastname,
+              password: sha224(this.user.password)
+            }
           }).then((response) => {
             if (response.data) {
               this.alert = {
@@ -100,20 +108,24 @@
       rules: {
         nickname: [
           v => !!v || 'Nickname is required',
-          v => (v && v.length <= 12) || 'Name must be between 2 and 16 characters'
+          v => (v && v.length <= 12) || 'Nickname must be between 2 and 16 characters',
+          v => v && !/[[:blank:]]/.test(v) || 'Nickname can\'t contain any space caracter',
         ],
         email: [
           v => !!v || 'Email is required',
           v => (v && v.length <= 32) || 'Email must be less than 32 characters',
-          v => /.+@.+/.test(v) || 'E-mail must be valid'
+          v => /.+@.+/.test(v) || 'Email must be valid',
+          v => v && !/[[:blank:]]/.test(v) || 'Email can\'t contain any space caracter',
         ],
         firstname: [
           v => !!v || 'Firstname is required',
-          v => (v && v.length <= 16) || 'Firstname must be between 2 and 16 characters'
+          v => (v && v.length <= 16) || 'Firstname must be between 2 and 16 characters',
+          v => v && !/[[:blank:]]/.test(v) || 'Firstname can\'t contain any space caracter',
         ],
         lastname: [
           v => !!v || 'Lastname is required',
-          v => (v && v.length <= 16) || 'Lastname must be between 2 and 16 characters'
+          v => (v && v.length <= 16) || 'Lastname must be between 2 and 16 characters',
+          v => v && !/[[:blank:]]/.test(v) || 'Lastname can\'t contain any space caracter',
         ],
         password: [
           v => !!v || 'Password is required',

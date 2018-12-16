@@ -74,7 +74,8 @@
 </template>
 
 <script>
-  const axios = require('axios');
+  import axios from 'axios'
+  import { sha224 } from 'js-sha256'
 
   export default {
     methods: {
@@ -105,7 +106,7 @@
         if (this.$refs.form.validate()) {
           axios.post('api/users/connect', {
             nickname: this.nickname,
-            password: this.password
+            password: sha224(this.password)
           }).then(response => {
             if (!response.data) {
               this.alert = {

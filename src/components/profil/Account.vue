@@ -86,6 +86,7 @@
 
 <script>
   import axios from 'axios'
+  import { sha224 } from 'js-sha256'
 
   export default {
     props: ['owner', 'id'],
@@ -105,13 +106,16 @@
         ],
         email: [
           v => (!v || (v && v.length <= 32)) || 'Email must be less than 32 characters',
-          v => (!v || /.+@.+/.test(v)) || 'E-mail must be valid'
+          v => (!v || /.+@.+/.test(v)) || 'Email must be valid',
+          v => v && !/[[:blank:]]/.test(v) || 'Email can\'t contain any space caracter',
         ],
         firstname: [
-          v => (!v || (v && v.length >= 2 && v.length <= 16)) || 'Firstname must be between 2 and 16 characters'
+          v => (!v || (v && v.length >= 2 && v.length <= 16)) || 'Firstname must be between 2 and 16 characters',
+          v => v && !/[[:blank:]]/.test(v) || 'Firstname can\'t contain any space caracter',
         ],
         lastname: [
-          v => (!v || (v && v.length >= 2 && v.length <= 16)) || 'Lastname must be between 2 and 16 characters'
+          v => (!v || (v && v.length >= 2 && v.length <= 16)) || 'Lastname must be between 2 and 16 characters',
+          v => v && !/[[:blank:]]/.test(v) || 'Lastname can\'t contain any space caracter',
         ],
         password: [
           v => (!v || (v && v.length <= 26 && v.length >= 8)) || 'Password must be between 8 and 26 characters',
@@ -259,7 +263,6 @@
           params: this.$user
         }).then(response => {
           if (response.data) {
-            console.log(response.data)
             this.profile = response.data
             this.profile.password = ''
             this.profile.gender = this.profile.gender ? this.profile.gender.toString() : ''
@@ -292,7 +295,7 @@
       },
       submit () {
         const update = {
-          password: this.newProfile.password ? this.newProfile.password : false,
+          password: this.newProfile.password ? sha224(this.newProfile.password) : false,
           email: this.newProfile.email ? (this.newProfile.email == this.profile.email ? false : this.newProfile.email) : false,
           firstname: this.newProfile.firstname ? (this.newProfile.firstname == this.profile.firstname ? false : this.newProfile.firstname) : false,
           lastname: this.newProfile.lastname ? (this.newProfile.lastname == this.profile.lastname ? false : this.newProfile.lastname) : false,
