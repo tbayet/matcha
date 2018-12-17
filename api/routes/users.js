@@ -237,6 +237,7 @@ router.post('/check', function(req, res, next) {
   popularity [min, max]
   distance km
   tags [list]
+  sortBy : char
 */
 router.post('/profiles', function(req, res, next) {
   const coordsToKm = (lat1, lng1, lat2, lng2) => {
@@ -264,28 +265,31 @@ router.post('/profiles', function(req, res, next) {
       return ([[1, 1, 2, 2], [1, 3, 2, 3]])
     }
   }
-  const profiles_sort = (profiles, age, lat, lng, popularity, tags) => {
+  const profiles_sort = (profiles, age, lat, lng, popularity, tags, sortBy) => {
     let birth = new Date(age)
-    // if tags && tags.length
+
     profiles.sort((a, b) => {
       let scoreA = 0
       let scoreB = 0
       let birthA = new Date(a.age)
       let birthB = new Date(b.age)
 
-      scoreA += (new Date(Math.abs(birth - birthA)).getFullYear() - 1970) * 5
-      scoreB += (new Date(Math.abs(birth - birthB)).getFullYear() - 1970) * 5
-
-      scoreA += parseInt(Math.sqrt(Math.abs(popularity - a.popularity))) * 4
-      scoreB += parseInt(Math.sqrt(Math.abs(popularity - b.popularity))) * 4
-
-      // scoreA += parseInt(Math.sqrt(Math.abs(lat - a.position.split(",")[0]) + (Math.abs(lng - a.position.split(",")[1]) % 180 ? 180 - (Math.abs(lng - a.position.split(",")[1]) % 180) : Math.abs(lng - a.position.split(",")[1])))) * 20
-      // scoreB += parseInt(Math.sqrt(Math.abs(lat - b.position.split(",")[0]) + (Math.abs(lng - b.position.split(",")[1]) % 180 ? 180 - (Math.abs(lng - b.position.split(",")[1]) % 180) : Math.abs(lng - b.position.split(",")[1])))) * 20
-      scoreA += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(a.position.split(",")[0]), parseFloat(a.position.split(",")[1])))) * 10
-      scoreA += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(b.position.split(",")[0]), parseFloat(b.position.split(",")[1])))) * 10
-
-      scoreA += a.tags.split(",").filter((curr) => (tags.indexOf(parseInt(curr)) != -1)).length * 10
-      scoreB += b.tags.split(",").filter((curr) => (tags.indexOf(parseInt(curr)) != -1)).length * 10
+      if (sortBy == "1" || sortBy == "2") {
+        scoreA += (new Date(Math.abs(birth - birthA)).getFullYear() - 1970) * 5
+        scoreB += (new Date(Math.abs(birth - birthB)).getFullYear() - 1970) * 5
+      }
+      if (sortBy == "1" || sortBy == "3") {
+        scoreA += parseInt(Math.sqrt(Math.abs(popularity - a.popularity))) * 4
+        scoreB += parseInt(Math.sqrt(Math.abs(popularity - b.popularity))) * 4
+      }
+      if (sortBy == "1" || sortBy == "4") {      
+        scoreA += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(a.position.split(",")[0]), parseFloat(a.position.split(",")[1])))) * 10
+        scoreA += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(b.position.split(",")[0]), parseFloat(b.position.split(",")[1])))) * 10
+      }
+      if (sortBy == "1" || sortBy == "5") {
+        scoreA -= a.tags.split(",").filter((curr) => (tags.indexOf(parseInt(curr)) != -1)).length * 10
+        scoreB -= b.tags.split(",").filter((curr) => (tags.indexOf(parseInt(curr)) != -1)).length * 10
+      }
 
       return (scoreA - scoreB)
     })
@@ -329,7 +333,7 @@ router.post('/profiles', function(req, res, next) {
             let lat = parseFloat(result[0].position.split(",")[0])
             let lng = parseFloat(result[0].position.split(",")[1])
 
-            let sorted = profiles_sort(result3, result[0].age, lat, lng, result[0].popularity, result2)
+            let sorted = profiles_sort(result3, result[0].age, lat, lng, result[0].popularity, result2, q.sortBy)
 
             sorted.filter(elem => {
               return (!distance || coordsToKm(lat, lng, elem.position.split(",")[0], elem.position.split(",")[1]) <= distance)

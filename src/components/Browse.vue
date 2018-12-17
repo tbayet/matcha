@@ -43,6 +43,13 @@
           </v-layout>
         </v-flex>
         <v-flex xs12 md6 class="pa-5">
+          <v-radio-group label="Sort by: " v-model="sortBy" row>
+            <v-radio label="All" value="1"></v-radio>
+            <v-radio label="Age" value="2"></v-radio>
+            <v-radio label="Popularity" value="3"></v-radio>
+            <v-radio label="Distance" value="4"></v-radio>
+            <v-radio label="Tags" value="5"></v-radio>
+          </v-radio-group>
           <v-combobox
             ref="combobox"
             v-model="chips"
@@ -80,7 +87,7 @@
         </router-link>
         <v-divider></v-divider>
         <v-card-text>
-          <span style="font-size: 2vw">{{profile.nickname}}</span>
+          <span style="font-size: 18px">{{profile.nickname}}</span>
         </v-card-text>
       </v-card>
     </v-flex>
@@ -106,6 +113,7 @@
       isLoading: false,
       listTags: [],
       rights: false,
+      sortBy: "1",
     }),
     methods: {
       checkRights () {
@@ -133,6 +141,7 @@
           popularity: this.popularity,
           distance: this.convDistance(this.distanceValue),
           tags: this.chips.map(elem => (this.listTags[this.listTags.findIndex(v => (v.name == elem))].id)),
+          sortBy : this.sortBy
         }).then(response => {
           this.profiles = response.data
         })
