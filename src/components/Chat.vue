@@ -40,6 +40,7 @@
         <v-text-field
           v-model="newMessage"
           append-outer-icon="send"
+          ref="messageInput"
           box
           clearable
           label="Message"
@@ -62,7 +63,6 @@
       messages: [],
       id: 0,
       newMessage: "",
-      interval: null,
     }),
     beforeMount () {
       if (this.$route.query.id)
@@ -72,9 +72,21 @@
     mounted () {
       document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight
     },
+    beforeRouteLeave (from, to, next) {
+      this.clearAllInterval()
+      next()
+    },
+    beforeDestroy () {
+      this.clearAllInterval()
+    },
     methods: {
+      clearAllInterval () {
+        this.$chatInterval = this.$chatInterval.filter(e => {
+          clearInterval(e)
+          return false
+        })
+      },
       routeTo (idProfile, idNotification, readed) {
-        clearInterval(this.interval)
         if (!readed) {
           axios.post('api/users/readNotification', {
             userId: this.$user.id,
@@ -93,36 +105,38 @@
           if (response.data && response.data.length) {
             this.conversations = response.data
             if (!this.id) {
-              this.$router.replace({path:'/chat', query: {id: this.conversations[0].idLiked}})
               this.id = this.conversations[0].idLiked
             }
-            clearInterval(this.interval)
+            this.clearAllInterval()
             this.getMessages()
-            this.interval = setInterval(() => {
+            this.$chatInterval.push(setInterval(() => {
               this.getMessages()
-            }, 3000)
+            }, 3000))
           }
         })
       },
       getMessages () {
-        axios.get('api/users/messages', {
-          params: {
-            userId: this.$user.id,
-            userToken: this.$user.token,
-            id: this.id
-          }
-        }).then(response => {
-          if (response.data && response.data.length) {
-            if (this.messages.length != response.data.length) {
-              this.messages = response.data
-              this.$nextTick(() => {
-                document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight
-              })
+        if (this.conversations.length) {
+          axios.get('api/users/messages', {
+            params: {
+              userId: this.$user.id,
+              userToken: this.$user.token,
+              id: this.id
             }
-          }
-          else
-            this.messages = []
-        })
+          }).then(response => {
+            if (response.data && response.data.length) {
+              if (this.messages.length != response.data.length) {
+                this.messages = response.data
+                this.$nextTick(() => {
+                  document.getElementById("chatContainer").scrollTop = document.getElementById("chatContainer").scrollHeight
+                  this.$refs.messageInput.focus()
+                })
+              }
+            }
+            else
+              this.messages = []
+          })
+        }
       },
       sendMessage () {
         axios.post('api/users/message', {

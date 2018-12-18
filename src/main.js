@@ -16,7 +16,8 @@ let globalData = new Vue({
     $user: {
       id: "",
       token: ""
-    }
+    },
+    $chatInterval: []
   }
 });
 Vue.mixin({
@@ -24,6 +25,10 @@ Vue.mixin({
     $user: {
       get: function () { return globalData.$data.$user },
       set: function (newUser) { globalData.$data.$user = newUser; }
+    },
+    $chatInterval: {
+      get: function () { return globalData.$data.$chatInterval },
+      set: function (newInterval) { globalData.$data.$chatInterval = newInterval; }
     },
     $APIKEY: () => ("matcha42")
   }

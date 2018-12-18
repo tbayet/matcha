@@ -4,6 +4,7 @@ const fs = require('fs')
 const nodemailer = require('nodemailer')
 const sha224 = require('js-sha256').sha224
 
+let loading = false
 let resetPassword = []
 let confirmMail = []
 const transporter = nodemailer.createTransport({
@@ -57,8 +58,10 @@ const generateKey = (id, res) => {
     'date': new Date()
   }
   token["p"+id] = key
+  loading = true
   res.locals.connection.query("UPDATE users SET lastOnline=? WHERE id=?", [new Date(), id], function(err, result) {
     if (err) throw err
+    loading = false
   })
   return key.key
 }
@@ -70,9 +73,11 @@ const check_key = (id, key, res) => {
     now = new Date()
     if (res) {
       if (now.getTime() - token["p"+id].date.getTime() > 60 * 1000) {
+        loading = true
         res.locals.connection.query("UPDATE users SET lastOnline=? WHERE id=?", [now, id], function(err, result) {
           if (err) throw err
           token["p"+id].date = now
+          loading = false
         })
       }
     }
@@ -106,13 +111,22 @@ const validOrientation = v => (v >= 1 && v <=3)
 /* Valid user connection */
 //  PENSER AU LOWERCASE
 router.post('/connect', function(req, res, next) {
+  const waitload = (res, toSend) => {
+    console.log(loading)
+    if (loading) {
+      setTimeout(waitload(res, toSend), 500)
+    } else {
+      res.send(toSend)
+    }
+  }
   if (validName(req.body.nickname, req)) {
     res.locals.connection.query("SELECT id, password FROM users WHERE nickname=?", [req.body.nickname], function(err, result) {
       if (err) throw err
       if (result.length == 1) {
         if (result[0].password == sha224(req.sanitize(req.body.password)) && result[0].password != ".") {
           let key = generateKey(result[0].id, res)
-          res.send({token: key, id: result[0].id})
+          waitload(res, {token: key, id: result[0].id})
+          //res.send({token: key, id: result[0].id})
         } else
           res.send(false)
       } else
@@ -375,12 +389,14 @@ router.get('/profile/:id', function(req, res, next) {
               res.locals.connection.query("UPDATE visits SET date=? WHERE idUser=? AND idVisited=?", [new Date(), req.query.id, parseInt(req.params.id)], function(err, result2) {
                 if (err) throw err
                 pushNotification(req.params.id, req.query.id, 2, res)
+                while (loading) {}
                 res.send(result[0]);
               })
             } else {
               res.locals.connection.query("INSERT INTO visits (idUser, idVisited, date) VALUES (?)", [[req.query.id, parseInt(req.params.id), new Date()]], function(err, result2) {
                 if (err) throw err
                 pushNotification(req.params.id, req.query.id, 2, res)
+                while (loading) {}
                 res.send(result[0]);
               })
             }
@@ -516,6 +532,7 @@ router.post('/addpicture', function(req, res, next) {
           res.locals.connection.query("INSERT INTO pictures (idUser, picture, date) VALUES (?)", [[req.body.id, url + '.' + format, new Date()]], function(err, result) {
             if (err) throw err
             addPopularity(req.body.id, res, 1)
+            while (loading) {}
             res.send(true)
           })
         })
@@ -540,6 +557,7 @@ router.post('/deletepicture', function(req, res, next) {
     res.locals.connection.query("DELETE FROM pictures WHERE id=?", [parseInt(req.body.imgId)], function(err, result) {
       if (err) throw err
       removePopularity(req.body.user.id, res, 1)
+      while (loading) {}
       res.send(true)
     })
   } else
@@ -641,18 +659,24 @@ router.post('/match', function(req, res, next) {
               if (err) throw err
               if (likeIt.length) {
                 res.locals.connection.query("DELETE FROM matches WHERE idUser=? AND idLiked=?", [req.body.userId, parseInt(req.body.id)], function(err, result) {
-                  if (likeMe.length)
+                  if (likeMe.length) {
                     pushNotification(req.body.id, req.body.userId, 5, res)
+                    while (loading) {}
+                  }
                   removePopularity(req.body.id, res, 10)
+                  while (loading) {}
                   res.send(true)
                 })
               } else {
                 res.locals.connection.query("INSERT INTO matches (idUser, idLiked, date) VALUES (?)", [[req.body.userId, parseInt(req.body.id), new Date()]], function(err, result) {
-                  if (likeMe.length)
+                  if (likeMe.length) {
                     pushNotification(req.body.id, req.body.userId, 4, res)
-                  else
+                  } else {
                     pushNotification(req.body.id, req.body.userId, 1, res)
+                  }
+                  while (loading) {}
                   addPopularity(req.body.id, res, 10)
+                  while (loading) {}
                   res.send(true)
                 })
               }
@@ -742,6 +766,7 @@ router.get('/notifications', function(req, res, next) {
   if (check_key(req.query.userId, req.query.userToken, res)) {
     res.locals.connection.query("SELECT id, idUser, idNotifier, type, readed FROM notifications WHERE idUser=? ORDER BY date DESC", [req.query.userId], function(err, result) {
       if (err) throw err
+      while (loading) {}
       res.send(result);
     })
   } else
@@ -817,6 +842,7 @@ router.post('/message', function(req, res, next) {
     res.locals.connection.query("INSERT INTO messages (idUser, idMessaged, message, date) VALUES (?)", [[req.body.userId, parseInt(req.body.id), req.sanitize(req.body.message), new Date()]], function(err, blocked) {
       if (err) throw err
       pushNotification(req.body.id, req.body.userId, 3, res)
+      while (loading) {}
       res.send(true)
     })
   } else
@@ -831,6 +857,7 @@ router.post('/message', function(req, res, next) {
   5: Unliked Back (unmatche)
 */
 const pushNotification = (idUser, idNotifier, type, res) => {
+  loading = true
   res.locals.connection.query("SELECT idUser FROM blocks WHERE idBlocked=? AND idUser=?", [idNotifier, idUser], function(err, result) {
     if (err) throw err;
     if (!result.length) {
@@ -838,6 +865,7 @@ const pushNotification = (idUser, idNotifier, type, res) => {
         if (err) throw err;
         res.locals.connection.query("INSERT INTO notifications (idUser, idNotifier, type, date) VALUES (?)", [[parseInt(idUser), parseInt(idNotifier), type, new Date()]], function(err, result) {
           if (err) throw err;
+          loading = false
         })
       })
     }
@@ -845,17 +873,21 @@ const pushNotification = (idUser, idNotifier, type, res) => {
 }
 
 const removePopularity = (id, res, amount) => {
+  loading = true
   res.locals.connection.query("UPDATE users SET popularity=0 WHERE id=? AND popularity < ?", [parseInt(id), amount], function(err, result) {
     res.locals.connection.query("UPDATE users SET popularity=popularity - ? WHERE id=? AND popularity >= ?", [amount, parseInt(id), amount], function(err, result) {
       if (err) throw err;
+      loading = false
     })
   })
 }
 const addPopularity = (id, res, amount) => {
   const limit = 500 - amount
+  loading = true
   res.locals.connection.query("UPDATE users SET popularity=500 WHERE id=? AND popularity > ?", [parseInt(id), limit], function(err, result) {
     res.locals.connection.query("UPDATE users SET popularity=popularity + ? WHERE id=? AND popularity <= ?", [amount, parseInt(id), limit], function(err, result) {
       if (err) throw err;
+      loading = false
     })
   })
 }
