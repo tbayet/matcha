@@ -10,7 +10,7 @@
             <v-toolbar-title>Profile pictures</v-toolbar-title>
             <v-spacer></v-spacer>
             <v-toolbar-items>
-              <v-btn dark flat @click.native="dialog = false">Close</v-btn>
+              <v-btn dark flat @click.native="dialog = false; alert = {}">Close</v-btn>
             </v-toolbar-items>
           </v-toolbar>
           <v-layout justify-center>
@@ -85,6 +85,7 @@
 
     methods: {
       selectImg(key) {
+        this.alert = {}
         if (key != 0) {
           axios.post('api/users/favpicture', {
             user: this.$user,
@@ -97,6 +98,7 @@
         }
       },
       deleteImg(key) {
+        this.alert = {}
         axios.post('api/users/deletepicture', {
           user: this.$user,
           imgId: this.gallery[key].id
@@ -141,9 +143,10 @@
             type: 'error',
             message: "Wrong format (expected an image)",
           }
+          this.$refs.image.value = null
           this.imageFile = null
         }
-  		},
+      },
       addFile() {
         this.alert = {}
         if (this.imageFile) {
@@ -156,6 +159,7 @@
               this.loadGallery()
               this.imageName = ''
               this.imageFile = null
+              this.$refs.image.value = null
               this.alert = {
                 type: 'success',
                 message: "Your image have been added",
@@ -163,7 +167,14 @@
             } else {
               this.alert = {
                 type: 'error',
-                message: "Your file is too big",
+                message: "Your maximum pictures is 5",
+              }
+            }
+          }).catch(error => {
+            if (error.response) {
+              this.alert = {
+                type: 'error',
+                message: "File too big",
               }
             }
           })

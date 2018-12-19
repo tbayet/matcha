@@ -1,21 +1,45 @@
 <template>
   <v-app>
+    <v-btn
+      v-if="$vuetify.breakpoint.name == 'xs'"
+      flat
+      dark
+      @click.stop="drawer = !drawer"
+    >
+      Menu
+    </v-btn>
+    <v-navigation-drawer
+      v-model="drawer"
+      absolute
+      dark
+      temporary
+    >
+      <v-list class="pt-0" dense>
+        <v-list-tile to="/browse"><v-list-tile-content><v-list-tile-title> Browse </v-list-tile-title></v-list-tile-content></v-list-tile>
+        <v-list-tile to="/matches"><v-list-tile-content><v-list-tile-title> Matches </v-list-tile-title></v-list-tile-content></v-list-tile>
+        <v-list-tile to="/chat"><v-list-tile-content><v-list-tile-title> Chat </v-list-tile-title></v-list-tile-content></v-list-tile>
+        <v-list-tile :to="'/profil/'+ $user.id"><v-list-tile-content><v-list-tile-title> Profile </v-list-tile-title></v-list-tile-content></v-list-tile>
+      </v-list>
+    </v-navigation-drawer>
+
     <v-toolbar v-if="$user.token.length" dark color="primary">
-      <v-toolbar-side-icon></v-toolbar-side-icon>
       <v-toolbar-title class="white--text">
         <span>Matcha</span>
       </v-toolbar-title>
       <v-spacer></v-spacer>
+      
       <v-btn
+        v-if="$vuetify.breakpoint.name != 'xs'"
         title="Browse"
         flat
         to="/browse"
       >
         <v-icon left>search</v-icon>
-        Browse
+        <span class="hidden-sm-and-down">Browse</span>
       </v-btn>
       <v-spacer></v-spacer>
       <v-btn
+        v-if="$vuetify.breakpoint.name != 'xs'"
         title="Matches"
         flat
         to="/matches"
@@ -24,9 +48,10 @@
           <v-icon left>star_half</v-icon>
           <span v-if="newMatches" slot="badge">!</span>
         </v-badge>
-        Matches
+        <span class="hidden-sm-and-down">Matches</span>
       </v-btn>
       <v-btn
+        v-if="$vuetify.breakpoint.name != 'xs'"
         title="Chat"
         flat
         to="/chat"
@@ -35,7 +60,7 @@
           <v-icon left>question_answer</v-icon>
           <span v-if="newChat" slot="badge">!</span>
         </v-badge>
-        Chat
+        <span class="hidden-sm-and-down">Chat</span>
       </v-btn>
       <v-menu
         offset-y
@@ -56,12 +81,13 @@
         <notifications v-if="nbNotifications" :preload_notifications="notifications"></notifications>
       </v-menu>
       <v-btn
+        v-if="$vuetify.breakpoint.name != 'xs'"
         title="Profile"
         flat
         :to="'/profil/'+ $user.id"
       >
         <v-icon left>person</v-icon>
-        Profile
+        <span class="hidden-sm-and-down">Profile</span>
       </v-btn>
       <v-btn icon>
         <v-icon title="Disconnect" @click="disconnect">close</v-icon>
@@ -123,6 +149,7 @@ export default {
     }
   },
   data: () => ({
+    drawer: false,
     nbNotifications : 0,
     nbNewNotifications: 0,
     notifications : [],
