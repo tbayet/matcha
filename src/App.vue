@@ -1,28 +1,27 @@
 <template>
   <v-app>
-    <v-btn
-      v-if="$vuetify.breakpoint.name == 'xs'"
-      flat
-      dark
-      @click.stop="drawer = !drawer"
-    >
-      Menu
-    </v-btn>
-    <v-navigation-drawer
-      v-model="drawer"
-      absolute
-      dark
-      temporary
-    >
-      <v-list class="pt-0" dense>
-        <v-list-tile to="/browse"><v-list-tile-content><v-list-tile-title> Browse </v-list-tile-title></v-list-tile-content></v-list-tile>
-        <v-list-tile to="/matches"><v-list-tile-content><v-list-tile-title> Matches </v-list-tile-title></v-list-tile-content></v-list-tile>
-        <v-list-tile to="/chat"><v-list-tile-content><v-list-tile-title> Chat </v-list-tile-title></v-list-tile-content></v-list-tile>
-        <v-list-tile :to="'/profil/'+ $user.id"><v-list-tile-content><v-list-tile-title> Profile </v-list-tile-title></v-list-tile-content></v-list-tile>
-      </v-list>
-    </v-navigation-drawer>
-
     <v-toolbar v-if="$user.token.length" dark color="primary">
+      <v-btn
+        v-if="$vuetify.breakpoint.name == 'xs'"
+        flat
+        dark
+        @click.stop="drawer = !drawer"
+      >
+        Menu
+      </v-btn>
+      <v-navigation-drawer
+        v-model="drawer"
+        absolute
+        dark
+        temporary
+      >
+        <v-list class="pt-0" dense>
+          <v-list-tile to="/browse"><v-list-tile-content><v-list-tile-title> Browse </v-list-tile-title></v-list-tile-content></v-list-tile>
+          <v-list-tile to="/matches"><v-list-tile-content><v-list-tile-title> Matches </v-list-tile-title></v-list-tile-content></v-list-tile>
+          <v-list-tile to="/chat"><v-list-tile-content><v-list-tile-title> Chat </v-list-tile-title></v-list-tile-content></v-list-tile>
+          <v-list-tile :to="'/profil/'+ $user.id"><v-list-tile-content><v-list-tile-title> Profile </v-list-tile-title></v-list-tile-content></v-list-tile>
+        </v-list>
+      </v-navigation-drawer>
       <v-toolbar-title class="white--text">
         <span>Matcha</span>
       </v-toolbar-title>
