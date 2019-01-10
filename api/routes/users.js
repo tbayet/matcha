@@ -272,7 +272,7 @@ router.post('/profiles', function(req, res, next) {
       }
       if (sortBy == "1" || sortBy == "4") {      
         scoreA += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(a.position.split(",")[0]), parseFloat(a.position.split(",")[1])))) * 10
-        scoreA += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(b.position.split(",")[0]), parseFloat(b.position.split(",")[1])))) * 10
+        scoreB += parseInt(Math.sqrt(coordsToKm(lat, lng, parseFloat(b.position.split(",")[0]), parseFloat(b.position.split(",")[1])))) * 10
       }
       if (sortBy == "1" || sortBy == "5") {
         scoreA -= a.tags.split(",").filter(curr => (tags.indexOf(parseInt(curr)) != -1)).length * 10
@@ -324,7 +324,7 @@ router.post('/profiles', function(req, res, next) {
             let sorted = profiles_sort(result3, result[0].age, lat, lng, result[0].popularity, result2.map(elem => (elem.id)), q.sortBy)
 
             sorted.filter(elem => {
-              return (!distance || coordsToKm(lat, lng, elem.position.split(",")[0], elem.position.split(",")[1]) <= distance)
+              return (!distance || coordsToKm(lat, lng, parseFloat(elem.position.split(",")[0]), parseFloat(elem.position.split(",")[1])) <= distance)
             }).forEach(elem => {
               const dates = elem.pictureDate.split(",")
               if (dates.length > 1) {

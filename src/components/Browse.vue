@@ -36,7 +36,7 @@
                 ticks="always"
                 :tick-labels="distanceLabels"
                 tick-size="3"
-                :max="4"
+                :max="5"
                 step="1"
               ></v-slider>
             </v-flex>
