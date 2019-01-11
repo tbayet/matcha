@@ -6,8 +6,8 @@
       <h6 v-if="profile.lastOnline">Last connection: {{new Date(profile.lastOnline).toDateString()}}</h6>
       <h5 v-if="!profile.lastOnline">* Online *</h5>
     </div>
-    <v-spacer>{{profile.popularity}}</v-spacer>
-    <v-spacer>{{newProfile.position.zip}}</v-spacer>
+    <v-spacer>[{{newProfile.position.zip}}]</v-spacer>
+    <v-spacer>{{profile.popularity}} pts</v-spacer>
     <h3>{{gender(profile.gender)}} {{orientation(profile.orientation)}}</h3>
 
     <v-dialog v-if="owner" v-model="dialog" fullscreen hide-overlay transition="dialog-bottom-transition">

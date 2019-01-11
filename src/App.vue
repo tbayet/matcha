@@ -106,7 +106,6 @@ import Notifications from './components/others/Notifications.vue'
 export default {
   name: 'App',
   mounted () {
-    console.log("FUCKKKKK :E")
     setInterval(() => {
       if (this.$user.token.length && this.$user.id)
         this.getNotifications()

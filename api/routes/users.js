@@ -31,7 +31,7 @@ const sendResetMail = (nickname, key, email) => {
     from: 'qsfdjhspeorigjzmerjnsv@gmail.com',
     to: email,
     subject: 'MATCHA Recover your password',
-    text: 'Follow this link to define a new password : http://localhost/#/resetpassword?nickname='+nickname+'&key=' + key
+    text: 'Follow this link to define a new password : http://localhost:8080/#/resetpassword?nickname='+nickname+'&key=' + key
   }
   transporter.sendMail(mailOptions, function(error, info) {
     console.log(error ? error : 'Reset password email sent to ' + email)
@@ -42,7 +42,7 @@ const sendConfirmMail = (key, email) => {
     from: 'qsfdjhspeorigjzmerjnsv@gmail.com',
     to: email,
     subject: 'MATCHA Confirmation mail',
-    text: 'Follow this link to confirm your mail adress : http://localhost/api/users/mailconfirm?key=' + key
+    text: 'Follow this link to confirm your mail adress : http://localhost:8080/api/users/mailconfirm?key=' + key
   }
   transporter.sendMail(mailOptions, function(error, info) {
     console.log(error ? error : 'Confirm email sent to ' + email);
@@ -118,7 +118,7 @@ router.post('/add', function(req, res, next) {
     res.locals.connection.query("SELECT nickname FROM users WHERE nickname=?", [data.nickname], function(err, result) {
       if (!result.length) {
         res.locals.connection.query("INSERT INTO users (nickname, email, firstname, lastname, password) VALUES (?)", [[data.nickname, data.email, data.firstname, data.lastname, "."]], function(err, result) {
-          let key = addConfirm(data.nickname, sha256(req.sanitize(data.password)))
+          let key = addConfirm(data.nickname, sha224(req.sanitize(data.password)))
           sendConfirmMail(key, data.email)
           res.send(true)
         })
@@ -134,10 +134,10 @@ router.get('/mailconfirm', function(req, res, next) {
       if (err) throw err
       delete confirmMail[req.query.key]
       res.set('Content-Type', 'text/html')
-      res.send("<p>Your email is validated. You will be redirected for loggin in 3 seconds. Else, click <a href='http://localhost'>HERE</a></p><script>setTimeout(() => {window.location='http://localhost/'}, 3000)</script>")
+      res.send("<p>Your email is validated. You will be redirected for loggin in 3 seconds. Else, click <a href='http://localhost:8080'>HERE</a></p><script>setTimeout(() => {window.location='http://localhost:8080'}, 3000)</script>")
     })
   } else
-    res.redirect('http://localhost/')
+    res.redirect('http://localhost:8080/')
 })
 router.post('/mailpassword', function(req, res, next) {
   if (validName(req.body.nickname, req)) {
@@ -287,9 +287,6 @@ router.post('/profiles', function(req, res, next) {
   const q = req.body
   if (check_key(q.id, q.token)) {
     res.locals.connection.query("SELECT popularity, age, gender, orientation, position FROM users WHERE id=?", [q.id], function(err, result) {
-      //check si le profil est completement rempli
-
-      //ERROR HERE : Check if tags exists (len == 0)
       res.locals.connection.query("SELECT id FROM tags WHERE id IN (SELECT idTag FROM taglink WHERE idUser=?)", [q.id], function(err, result2) {
         if (err) throw err
         const gender_orientation = lookingfor(result[0].gender, result[0].orientation)
@@ -322,10 +319,8 @@ router.post('/profiles', function(req, res, next) {
             let lng = parseFloat(result[0].position.split(",")[1])
 
             let sorted = profiles_sort(result3, result[0].age, lat, lng, result[0].popularity, result2.map(elem => (elem.id)), q.sortBy)
-
-            sorted.filter(elem => {
-              return (!distance || coordsToKm(lat, lng, parseFloat(elem.position.split(",")[0]), parseFloat(elem.position.split(",")[1])) <= distance)
-            }).forEach(elem => {
+            .filter(elem => (!distance || coordsToKm(lat, lng, parseFloat(elem.position.split(",")[0]), parseFloat(elem.position.split(",")[1])) <= distance))
+            sorted.forEach(elem => {
               const dates = elem.pictureDate.split(",")
               if (dates.length > 1) {
                 const pics = elem.picture.split(",")
@@ -363,7 +358,6 @@ router.get('/profile/:id', function(req, res, next) {
               res.locals.connection.query("UPDATE visits SET date=? WHERE idUser=? AND idVisited=?", [new Date(), req.query.id, parseInt(req.params.id)], function(err, result2) {
                 if (err) throw err
                 pushNotification(req.params.id, req.query.id, 2, res).then(function(data) {
-                  console.log(data)
                   res.send(result[0]);
                 })
               })
@@ -371,7 +365,6 @@ router.get('/profile/:id', function(req, res, next) {
               res.locals.connection.query("INSERT INTO visits (idUser, idVisited, date) VALUES (?)", [[req.query.id, parseInt(req.params.id), new Date()]], function(err, result2) {
                 if (err) throw err
                 pushNotification(req.params.id, req.query.id, 2, res).then(function(data) {
-                  console.log(data)
                   res.send(result[0]);
                 })
               })

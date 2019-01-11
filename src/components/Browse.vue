@@ -86,7 +86,7 @@
           </v-responsive>
         </router-link>
         <v-divider></v-divider>
-        <v-card-text>
+        <v-card-text class="overflow-hidden">
           <span style="font-size: 18px">{{profile.nickname}}</span>
         </v-card-text>
       </v-card>

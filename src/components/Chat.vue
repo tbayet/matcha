@@ -38,6 +38,7 @@
       <v-flex py-2>
         <v-form @keyup.native.enter="sendMessage">
         <v-text-field
+          :disabled="!conversations.length"
           v-model="newMessage"
           append-outer-icon="send"
           ref="messageInput"
@@ -139,17 +140,19 @@
         }
       },
       sendMessage () {
-        axios.post('api/users/message', {
-          userId: this.$user.id,
-          userToken: this.$user.token,
-          id: this.id,
-          message: this.newMessage
-        }).then(response => {
-          if (response.data) {
-            this.newMessage = ""
-            this.getMessages()
-          }
-        })
+        if (this.newMessage.trim().length) {
+          axios.post('api/users/message', {
+            userId: this.$user.id,
+            userToken: this.$user.token,
+            id: this.id,
+            message: this.newMessage
+          }).then(response => {
+            if (response.data) {
+              this.newMessage = ""
+              this.getMessages()
+            }
+          })
+        }
       }
     },
   }
