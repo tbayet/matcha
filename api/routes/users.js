@@ -153,7 +153,7 @@ router.post('/mailpassword', function(req, res, next) {
 })
 
 router.get('/resetpassword', function(req, res, next) {
-  res,send(req.query.nickname in resetPassword && resetPassword[req.query.nickname] == req.query.key)
+  res.send(req.query.nickname in resetPassword && resetPassword[req.query.nickname] == req.query.key)
 })
 
 router.post('/edit', function(req, res, next) {

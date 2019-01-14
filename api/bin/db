@@ -2,7 +2,7 @@
 
 const mysql = require('mysql')
 const faker = require('faker/locale/fr')
-const FAKENUMBER = 200
+const FAKENUMBER = 600
 const sha224 = require('js-sha256').sha224
 
 const connection = mysql.createConnection({
