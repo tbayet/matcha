@@ -1,5 +1,11 @@
 # matcha
 
+## Configure nginx file
+```
+vim nginx.conf
+- Edit repertory location (> root /PATH/TO/DIR/dist/)
+```
+
 ## Environment setup
 ```
 brew install nginx
@@ -8,7 +14,7 @@ brew services start nginx
 brew service start mysql
 ```
 
-### if no db initialized
+### Create database
 ```
 mysql -u root
 > CREATE DATABASE matcha_db;
@@ -20,30 +26,16 @@ mysql -u root
 ## Project setup
 ```
 npm install
-```
-
-### Compiles and hot-reloads for development
-```
-npm run serve
-
-```
-### Compiles and minifies for production
-```
 npm run build
 ```
 
-#### run api :
+### Start API :
 ```
-cd api
+cd ./api/
 npm run init-db
 npm run start
 ```
 
 ```
 Go to http://localhost:8080/
-```
-
-### Lints and fixes files
-```
-npm run lint
 ```
